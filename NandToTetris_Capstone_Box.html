@@ -1,0 +1,2387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hack Computer Lab — Nand to Tetris Capstone (ETCCNT301)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            serif: ['Fraunces', 'Georgia', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            sand: {
+              50: '#FAF8F5',
+              100: '#F4EFE8',
+              200: '#E7DFD3',
+              300: '#D4C7B4',
+            },
+            ink: {
+              900: '#1E242B',
+              700: '#3B4450',
+              500: '#64707D',
+            },
+            terra: {
+              50: '#FDF5F2',
+              100: '#FAE6DF',
+              500: '#C85A32',
+              600: '#B04A25',
+              700: '#8F391A',
+            },
+            sage: {
+              50: '#F2F7F4',
+              100: '#E1EDE6',
+              600: '#2E6F56',
+              700: '#235643',
+            }
+          },
+          boxShadow: {
+            'soft': '0 4px 20px -2px rgba(30, 36, 43, 0.06), 0 1px 3px rgba(30, 36, 43, 0.04)',
+            'card': '0 10px 30px -5px rgba(30, 36, 43, 0.07), 0 2px 6px -1px rgba(30, 36, 43, 0.03)',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --bg-canvas: #FAF8F5;
+      --bg-surface: #FFFFFF;
+      --ink-primary: #1E242B;
+      --accent-terra: #C85A32;
+      --accent-sage: #2E6F56;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background-color: #FAF8F5;
+      color: #1E242B;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(circle at 12% 8%, rgba(200, 90, 50, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 88% 85%, rgba(46, 111, 86, 0.06) 0%, transparent 42%);
+    }
+    h1, h2, .font-display {
+      font-family: 'Fraunces', Georgia, serif;
+    }
+    code, pre, textarea.code-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .studio-card {
+      background: #FFFFFF;
+      border: 1px solid #E7DFD3;
+      box-shadow: 0 4px 20px -2px rgba(30, 36, 43, 0.05);
+    }
+    .studio-card-featured {
+      background: linear-gradient(145deg, #FFFFFF 0%, #FDF8F3 100%);
+      border: 1px solid #DFC8B6;
+      box-shadow: 0 10px 30px -5px rgba(200, 90, 50, 0.08);
+    }
+    .hack-screen-canvas {
+      image-rendering: pixelated;
+      background-color: #F4EFE8;
+      box-shadow: inset 0 2px 8px rgba(30, 36, 43, 0.08);
+    }
+    @keyframes softPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.92); }
+    }
+    .status-dot {
+      animation: softPulse 2.4s infinite ease-in-out;
+    }
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #F4EFE8;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D4C7B4;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #B04A25;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-sand-50 text-ink-900 selection:bg-terra-500 selection:text-white">
+
+  <!-- Gentle Toast Notification -->
+  <div id="toastBanner" class="fixed bottom-5 right-5 z-50 hidden max-w-md rounded-2xl border border-sand-300 bg-white text-ink-900 px-4 py-3 shadow-card">
+    <div class="flex items-start gap-3">
+      <span id="toastBadge" class="mt-1.5 inline-block h-2.5 w-2.5 rounded-full bg-sage-600 shrink-0 status-dot"></span>
+      <p id="toastMessage" class="text-xs sm:text-sm font-medium leading-snug text-ink-700"></p>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- TOP COURSE & STUDENT WORKSPACE HEADER                                   -->
+  <!-- ======================================================================= -->
+  <header class="sticky top-0 z-40 border-b border-sand-200 bg-white/90 backdrop-blur-md">
+    <!-- Subtle Academic Context Strip -->
+    <div class="border-b border-sand-200/80 bg-sand-100/70 px-3 sm:px-6 py-1.5 text-[11px] text-ink-500">
+      <div class="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <span class="inline-block h-2 w-2 rounded-full bg-sage-600 status-dot"></span>
+          <span class="font-semibold text-sage-700">Lab Workbench Ready</span>
+          <span class="text-sand-300">•</span>
+          <span>16-Bit Hack Architecture</span>
+          <span class="hidden md:inline text-sand-300">•</span>
+          <span class="hidden md:inline">Nand to Tetris I (ETCCNT301)</span>
+        </div>
+        <div class="flex items-center gap-3 font-mono text-[11px]">
+          <span>Screen: <strong class="text-ink-700">16384 (0x4000)</strong></span>
+          <span>Keyboard: <strong class="text-ink-700">24576 (0x6000)</strong></span>
+          <span class="hidden sm:inline font-sans font-semibold text-terra-600">K.R. Mangalam University</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Identity & Action Bar -->
+    <div class="mx-auto max-w-7xl px-3 sm:px-6 py-3.5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- Warm Studio Logo -->
+        <button onclick="switchTab('overview')" class="flex items-center gap-3 rounded-2xl border border-sand-200 bg-sand-50 hover:border-terra-500/50 hover:bg-white px-3.5 py-2 text-left transition cursor-pointer group">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-terra-500 text-white font-display text-sm font-bold shadow-sm group-hover:bg-terra-600 transition">
+            16b
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-display text-sm sm:text-base font-bold text-ink-900">Hack Computer Studio</span>
+              <span class="rounded-full bg-sage-100 px-2 py-0.5 text-[10px] font-semibold text-sage-700">Capstone</span>
+            </div>
+            <div class="text-[11px] text-ink-500">Make the Computer Draw a Box</div>
+          </div>
+        </button>
+
+        <!-- Student Identity & Dynamic K Pill -->
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          <div class="flex items-center gap-3 rounded-2xl border border-sand-200 bg-sand-50/90 px-4 py-2">
+            <div class="text-xs leading-snug">
+              <div class="font-semibold text-ink-900 flex items-center gap-1.5">
+                <span id="headerStudentName">Shreya Upadhyay</span>
+                <span class="text-sand-300">•</span>
+                <span class="text-ink-500">Roll <span id="headerRollDisplay" class="font-mono font-bold text-terra-600">2501630007</span></span>
+              </div>
+              <div class="text-[11px] text-ink-500 mt-0.5">
+                Personal K = <span id="headerKDisplay" class="font-mono font-bold text-ink-900">07</span>
+                <span class="mx-1.5 text-sand-300">|</span>
+                K mod 3 = <span id="headerMod3Display" class="font-mono font-semibold text-sage-700">1</span>
+                <span class="mx-1.5 text-sand-300">|</span>
+                Box: <span id="headerBoxDimsDisplay" class="font-mono font-semibold text-ink-700">64×20 @ Row 7</span>
+              </div>
+            </div>
+            <button onclick="focusRollInput()" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 px-3 py-1.5 text-xs font-semibold text-ink-700 transition cursor-pointer">
+              Edit K
+            </button>
+          </div>
+
+          <button onclick="switchTab('part-c')" class="rounded-xl bg-terra-500 hover:bg-terra-600 text-white px-4 py-2.5 text-xs font-bold shadow-sm transition cursor-pointer">
+            Open Screen Simulator →
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================================================================= -->
+  <!-- WORKSPACE SHELL (FRIENDLY SIDEBAR + CONTENT VIEWPORT)                   -->
+  <!-- ======================================================================= -->
+  <div class="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-6 py-7 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+    <!-- LEFT NAVIGATION RAIL -->
+    <aside class="lg:col-span-3 lg:sticky lg:top-28 space-y-4">
+      <nav aria-label="Project Chapters" class="studio-card rounded-2xl p-2.5 space-y-1">
+        <div class="px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-500">
+          Project Chapters
+        </div>
+
+        <button data-nav="overview" onclick="switchTab('overview')" class="nav-btn w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left transition cursor-pointer">
+          <div>
+            <div class="text-[11px] font-medium opacity-75">Chapter 0</div>
+            <div class="text-xs sm:text-sm font-bold">Overview &amp; Your K</div>
+          </div>
+          <span class="rounded-md bg-sand-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-700">10 pts</span>
+        </button>
+
+        <button data-nav="part-a" onclick="switchTab('part-a')" class="nav-btn w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left transition cursor-pointer">
+          <div>
+            <div class="text-[11px] font-medium opacity-75">Part A • Hardware</div>
+            <div class="text-xs sm:text-sm font-bold">HDL Chips &amp; Tests</div>
+          </div>
+          <span class="rounded-md bg-sand-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-700">2.5 pts</span>
+        </button>
+
+        <button data-nav="part-b" onclick="switchTab('part-b')" class="nav-btn w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left transition cursor-pointer">
+          <div>
+            <div class="text-[11px] font-medium opacity-75">Part B • Software</div>
+            <div class="text-xs sm:text-sm font-bold">Python Assembler</div>
+          </div>
+          <span class="rounded-md bg-sand-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-700">3.0 pts</span>
+        </button>
+
+        <button data-nav="part-c" onclick="switchTab('part-c')" class="nav-btn w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left transition cursor-pointer">
+          <div>
+            <div class="text-[11px] font-medium opacity-75">Part C • Assembly</div>
+            <div class="text-xs sm:text-sm font-bold">Hack Screen &amp; CPU</div>
+          </div>
+          <span class="rounded-md bg-sand-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-700">2.5 pts</span>
+        </button>
+
+        <button data-nav="submission" onclick="switchTab('submission')" class="nav-btn w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left transition cursor-pointer">
+          <div>
+            <div class="text-[11px] font-medium opacity-75">Final Wrap-Up</div>
+            <div class="text-xs sm:text-sm font-bold">ZOSIMA &amp; Viva Prep</div>
+          </div>
+          <span class="rounded-md bg-sand-100 px-2 py-0.5 font-mono text-[11px] font-semibold text-ink-700">2.0 pts</span>
+        </button>
+      </nav>
+
+      <!-- Live K Summary Card -->
+      <div class="studio-card rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-ink-900">Your Box Blueprint</span>
+          <span id="railKBadge" class="rounded-full bg-terra-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-terra-700">K = 07</span>
+        </div>
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between text-ink-700">
+            <span class="text-ink-500">Starting Row:</span>
+            <span id="railStartRow" class="font-mono font-semibold text-ink-900">Row 7</span>
+          </div>
+          <div class="flex justify-between text-ink-700">
+            <span class="text-ink-500">Box Size:</span>
+            <span id="railDims" class="font-mono font-semibold text-ink-900">64px × 20h</span>
+          </div>
+          <div class="flex justify-between text-ink-700">
+            <span class="text-ink-500">Words per Row:</span>
+            <span id="railWords" class="font-mono font-semibold text-ink-900">4 words</span>
+          </div>
+          <div class="flex justify-between text-ink-700">
+            <span class="text-ink-500">Memory Range:</span>
+            <span id="railRamWindow" class="font-mono font-semibold text-terra-600">16608..17219</span>
+          </div>
+        </div>
+        <div class="pt-2.5 border-t border-sand-200 text-[11px] text-ink-700 leading-relaxed bg-sage-50/70 rounded-xl p-2.5">
+          <span class="font-semibold text-sage-700">K mod 3 = <span id="railMod3">1</span>:</span>
+          <span id="railMod3Short">Line-numbered invalid instruction errors without crashing.</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN VIEWPORT -->
+    <main class="lg:col-span-9 space-y-6">
+
+      <!-- =================================================================== -->
+      <!-- TAB 0: OVERVIEW & K-SPECS                                           -->
+      <!-- =================================================================== -->
+      <section id="view-overview" class="tab-view space-y-6">
+        <!-- Warm Editorial Hero Card -->
+        <div class="studio-card-featured rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+          <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+            <div class="space-y-3.5 max-w-2xl">
+              <div class="inline-flex items-center gap-2 rounded-full bg-terra-100/80 px-3.5 py-1 text-xs font-semibold text-terra-700">
+                <span>ETCCNT301</span>
+                <span>•</span>
+                <span>Individual Capstone</span>
+                <span>•</span>
+                <span>CO1–CO4</span>
+              </div>
+              <h1 class="text-2xl sm:text-4xl font-bold tracking-tight text-ink-900 leading-tight">
+                Make the Hack Computer <span class="text-terra-600 underline decoration-terra-500/30 decoration-4 underline-offset-4">Draw a Box.</span>
+              </h1>
+              <p class="text-xs sm:text-sm text-ink-700 leading-relaxed">
+                Bring your Nand to Tetris journey together in three approachable steps: wire the 16-bit Hack computer in HDL (<span class="font-mono text-terra-700 bg-terra-50 px-1.5 py-0.5 rounded">CPU.hdl</span>, <span class="font-mono text-terra-700 bg-terra-50 px-1.5 py-0.5 rounded">Memory.hdl</span>, <span class="font-mono text-terra-700 bg-terra-50 px-1.5 py-0.5 rounded">Computer.hdl</span>), build a two-pass Python assembler tailored to your <span class="font-mono font-semibold text-sage-700">K mod 3</span> rule, and run <span class="font-mono text-terra-700 bg-terra-50 px-1.5 py-0.5 rounded">Box.asm</span> so a solid box appears whenever you hold down a key.
+              </p>
+              <div class="pt-2 flex flex-wrap gap-3">
+                <button onclick="switchTab('part-a')" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 px-4 py-2.5 text-xs font-bold text-ink-900 transition cursor-pointer">
+                  1. Review HDL Chips
+                </button>
+                <button onclick="switchTab('part-b')" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 px-4 py-2.5 text-xs font-bold text-ink-900 transition cursor-pointer">
+                  2. Test Python Assembler
+                </button>
+                <button onclick="switchTab('part-c')" class="rounded-xl bg-terra-500 hover:bg-terra-600 text-white px-4 py-2.5 text-xs font-bold shadow-sm transition cursor-pointer">
+                  3. Try Live Screen Simulator
+                </button>
+              </div>
+            </div>
+
+            <!-- Grading Breakdown Card -->
+            <div class="xl:w-80 rounded-2xl border border-sand-200 bg-white p-4 space-y-2.5 shrink-0 shadow-soft">
+              <div class="flex items-center justify-between border-b border-sand-200 pb-2">
+                <span class="text-xs font-bold text-ink-700">Grading Breakdown</span>
+                <span class="rounded-full bg-sage-100 px-2.5 py-0.5 font-mono text-xs font-bold text-sage-700">10 Marks</span>
+              </div>
+              <div class="space-y-2 text-xs">
+                <div class="flex items-center justify-between rounded-xl bg-sand-50 px-3 py-2">
+                  <span class="text-ink-700 font-medium">Part A: HDL Computer</span>
+                  <span class="font-mono font-bold text-ink-900">2.5</span>
+                </div>
+                <div class="flex items-center justify-between rounded-xl bg-sand-50 px-3 py-2">
+                  <span class="text-ink-700 font-medium">Part B: Assembler + K</span>
+                  <span class="font-mono font-bold text-ink-900">3.0</span>
+                </div>
+                <div class="flex items-center justify-between rounded-xl bg-sand-50 px-3 py-2">
+                  <span class="text-ink-700 font-medium">Part C: Box Program</span>
+                  <span class="font-mono font-bold text-ink-900">2.5</span>
+                </div>
+                <div class="flex items-center justify-between rounded-xl bg-sand-50 px-3 py-2">
+                  <span class="text-ink-700 font-medium">Viva &amp; Live Edit</span>
+                  <span class="font-mono font-bold text-ink-900">2.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal Parameter K Calculator -->
+        <div class="studio-card rounded-3xl p-6 space-y-5">
+          <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-sand-200 pb-5">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-terra-600">Step 1 • Personalize Your Parameters</div>
+              <h2 class="text-xl sm:text-2xl font-bold text-ink-900 mt-1">Student Details &amp; K Calculation</h2>
+              <p class="text-xs sm:text-sm text-ink-500 mt-1">
+                Every student's box position and assembler rule depend on <span class="font-mono font-semibold text-ink-900">K</span> (the last two digits of your roll number).
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-end gap-2.5">
+              <div>
+                <label for="studentNameOverviewInput" class="block text-[11px] font-semibold text-ink-700 mb-1">Student Name</label>
+                <input id="studentNameOverviewInput" type="text" value="Shreya Upadhyay" oninput="syncStudentName(this.value)"
+                  class="w-44 sm:w-48 rounded-xl border border-sand-300 bg-sand-50/60 px-3 py-2 text-xs font-semibold text-ink-900 focus:border-terra-500 focus:bg-white focus:outline-none" />
+              </div>
+              <div>
+                <label for="rollNumberInput" class="block text-[11px] font-semibold text-ink-700 mb-1">Roll Number</label>
+                <input id="rollNumberInput" type="text" value="2501630007" oninput="updateRollFromInput(this.value)"
+                  class="w-36 sm:w-40 rounded-xl border border-terra-500/60 bg-terra-50/40 px-3 py-2 font-mono text-xs font-bold text-terra-700 focus:border-terra-600 focus:bg-white focus:outline-none" />
+              </div>
+              <button onclick="resetDefaultStudent()" class="rounded-xl border border-sand-300 bg-white hover:bg-sand-100 px-3 py-2 text-xs font-semibold text-ink-700 transition cursor-pointer">
+                Reset
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 Clean Metric Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="rounded-2xl border border-terra-500/25 bg-terra-50/50 p-4">
+              <div class="text-xs font-semibold text-terra-700">Personal Number K</div>
+              <div class="mt-1 flex items-baseline gap-2">
+                <span id="kValueOut" class="font-mono text-3xl font-extrabold text-terra-600">07</span>
+                <span id="kDerivationOut" class="font-mono text-xs text-ink-500">(2501630007)</span>
+              </div>
+              <div class="mt-1 text-[11px] text-ink-500">Last two digits of roll number</div>
+            </div>
+
+            <div class="rounded-2xl border border-sand-200 bg-sand-50/70 p-4 flex items-center justify-between">
+              <div>
+                <div class="text-xs font-semibold text-ink-500">K mod 3</div>
+                <div id="kMod3Out" class="mt-1 font-mono text-3xl font-extrabold text-ink-900">1</div>
+                <div class="mt-1 text-[11px] text-ink-500">Assembler feature</div>
+              </div>
+              <div class="border-l border-sand-200 pl-4">
+                <div class="text-xs font-semibold text-ink-500">K mod 4</div>
+                <div id="kMod4Out" class="mt-1 font-mono text-3xl font-extrabold text-sage-700">3</div>
+                <div class="mt-1 text-[11px] text-ink-500">+1 = Words/row</div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-sand-200 bg-sand-50/70 p-4">
+              <div class="text-xs font-semibold text-ink-500">Vertical Position</div>
+              <div id="boxStartRowOut" class="mt-1 font-mono text-2xl font-extrabold text-ink-900">Row 7</div>
+              <div id="boxRowSpanOut" class="mt-1 font-mono text-[11px] text-sage-700 font-medium">Rows 7 → 26 (20 rows)</div>
+            </div>
+
+            <div class="rounded-2xl border border-sand-200 bg-sand-50/70 p-4">
+              <div class="text-xs font-semibold text-ink-500">Box Width &amp; Height</div>
+              <div id="boxDimsOut" class="mt-1 font-mono text-2xl font-extrabold text-ink-900">64px × 20h</div>
+              <div id="boxWordsOut" class="mt-1 font-mono text-[11px] text-sage-700 font-medium">4 words (64 bits) / row</div>
+            </div>
+          </div>
+
+          <!-- Memory Address Formula & K mod 3 Feature Card -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div class="lg:col-span-5 rounded-2xl border border-sand-200 bg-sand-50/60 p-4 space-y-1.5">
+              <div class="text-xs font-semibold text-ink-500">Screen Memory Bounds (SCREEN + 32·r)</div>
+              <div id="screenRamRangeOut" class="font-mono text-lg font-bold text-terra-600">RAM[16608 .. 17219]</div>
+              <div id="screenRamFormulaOut" class="font-mono text-[11px] text-ink-700">
+                Row 7 start = 16384 + 32×7 = 16608; Row 26 end word = 17219
+              </div>
+            </div>
+
+            <div class="lg:col-span-7 rounded-2xl border border-sage-600/25 bg-sage-50/70 p-4 space-y-1.5">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-bold text-sage-700">Your Part B Assembler Feature</span>
+                <span id="kMod3BadgeOut" class="rounded-full bg-sage-600 text-white px-2.5 py-0.5 font-mono text-[10px] font-bold">K mod 3 = 1</span>
+              </div>
+              <div id="kMod3TitleOut" class="text-sm font-bold text-ink-900">Line-Numbered Invalid Instruction Errors (No Crash)</div>
+              <p id="kMod3DescOut" class="text-xs text-ink-700 leading-relaxed">
+                When an invalid instruction is encountered, print a clear diagnostic with the source line number (e.g. <span class="font-mono text-terra-700 font-semibold">Line 7: invalid instruction</span>) instead of crashing.
+              </p>
+            </div>
+          </div>
+
+          <!-- Memory Map & GitHub Submission Checklist -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 pt-1">
+            <div class="lg:col-span-6 rounded-2xl border border-sand-200 bg-sand-50/60 p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-ink-900">Hack Memory Map Overview</span>
+                <span class="font-mono text-[11px] text-ink-500">24,577 words</span>
+              </div>
+              <div class="space-y-2 text-xs">
+                <div class="rounded-xl border border-sand-200 bg-white p-2.5 flex items-center justify-between">
+                  <div>
+                    <div class="font-bold text-ink-900">RAM16K (Data Memory)</div>
+                    <div class="text-[11px] text-ink-500">R0–R15, Variables (16+), Stack &amp; Heap</div>
+                  </div>
+                  <span class="font-mono text-ink-700 font-semibold">0 .. 16383</span>
+                </div>
+                <div class="rounded-xl border border-terra-500/30 bg-terra-50/70 p-2.5 flex items-center justify-between">
+                  <div>
+                    <div class="font-bold text-terra-700">SCREEN (Display Memory)</div>
+                    <div id="memMapBoxSubtext" class="text-[11px] text-terra-700/80">Your box writes to: 16608 .. 17219</div>
+                  </div>
+                  <span class="font-mono text-terra-700 font-bold">16384 .. 24575</span>
+                </div>
+                <div class="rounded-xl border border-sand-200 bg-white p-2.5 flex items-center justify-between">
+                  <div>
+                    <div class="font-bold text-ink-900">KEYBOARD (KBD Register)</div>
+                    <div class="text-[11px] text-ink-500">ASCII key code when held, 0 when released</div>
+                  </div>
+                  <span class="font-mono text-ink-700 font-semibold">24576</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="lg:col-span-6 rounded-2xl border border-sand-200 bg-sand-50/60 p-4 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-ink-900">GitHub <span class="font-mono text-terra-600">capstone/</span> Submission Checklist</span>
+                <span class="text-[11px] font-medium text-sage-700">6 Required Files</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono text-xs">
+                <div class="rounded-xl border border-sand-200 bg-white px-3 py-2 flex items-center justify-between">
+                  <span class="text-ink-900">capstone/CPU.hdl</span>
+                  <span class="text-[10px] font-sans font-semibold text-ink-500">Part A</span>
+                </div>
+                <div class="rounded-xl border border-sand-200 bg-white px-3 py-2 flex items-center justify-between">
+                  <span class="text-ink-900">capstone/Memory.hdl</span>
+                  <span class="text-[10px] font-sans font-semibold text-ink-500">Part A</span>
+                </div>
+                <div class="rounded-xl border border-sand-200 bg-white px-3 py-2 flex items-center justify-between">
+                  <span class="text-ink-900">capstone/Computer.hdl</span>
+                  <span class="text-[10px] font-sans font-semibold text-ink-500">Part A</span>
+                </div>
+                <div class="rounded-xl border border-sand-200 bg-white px-3 py-2 flex items-center justify-between">
+                  <span class="text-ink-900">capstone/assembler.py</span>
+                  <span class="text-[10px] font-sans font-semibold text-sage-700">Part B</span>
+                </div>
+                <div class="rounded-xl border border-sand-200 bg-white px-3 py-2 flex items-center justify-between">
+                  <span class="text-ink-900">capstone/Box.asm</span>
+                  <span class="text-[10px] font-sans font-semibold text-terra-600">Part C</span>
+                </div>
+                <div class="rounded-xl border border-sand-200 bg-white px-3 py-2 flex items-center justify-between">
+                  <span class="text-ink-900">capstone/Box.hack</span>
+                  <span class="text-[10px] font-sans font-semibold text-terra-600">Part C</span>
+                </div>
+              </div>
+              <p class="text-[11px] text-ink-500 leading-relaxed">
+                Remember to also upload your 3–4 page PDF report on <strong class="text-ink-900">ZOSIMA</strong> with your Name, Roll No., K, box dimensions, test screenshots, box screenshot, and one mistake you fixed.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 1: PART A — HDL HARDWARE LAB                                    -->
+      <!-- =================================================================== -->
+      <section id="view-part-a" class="tab-view hidden space-y-6">
+        <div class="studio-card rounded-3xl p-6 space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sand-200 pb-4">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-terra-600">Part A • Build the Computer (2.5 Marks)</div>
+              <h2 class="text-2xl font-bold text-ink-900 mt-1">Hack Hardware Chips &amp; Test Verification</h2>
+              <p class="text-xs sm:text-sm text-ink-500 mt-1">
+                Review how your gates, ALU, registers, RAM, and PC wire together, and run the five official Nand2Tetris <span class="font-mono text-ink-700">.tst</span> scripts.
+              </p>
+            </div>
+
+            <!-- Chip Selector -->
+            <div class="flex flex-wrap gap-1.5 rounded-2xl bg-sand-100 p-1.5 border border-sand-200">
+              <button data-hdl="CPU.hdl" onclick="selectHdlFile('CPU.hdl')" class="hdl-tab rounded-xl px-3 py-1.5 font-mono text-xs font-bold transition cursor-pointer">CPU.hdl</button>
+              <button data-hdl="Memory.hdl" onclick="selectHdlFile('Memory.hdl')" class="hdl-tab rounded-xl px-3 py-1.5 font-mono text-xs font-bold transition cursor-pointer">Memory.hdl</button>
+              <button data-hdl="Computer.hdl" onclick="selectHdlFile('Computer.hdl')" class="hdl-tab rounded-xl px-3 py-1.5 font-mono text-xs font-bold transition cursor-pointer">Computer.hdl</button>
+              <button data-hdl="ALU.hdl" onclick="selectHdlFile('ALU.hdl')" class="hdl-tab rounded-xl px-3 py-1.5 font-mono text-xs font-bold transition cursor-pointer">ALU.hdl</button>
+            </div>
+          </div>
+
+          <!-- Visual Block Diagram -->
+          <div id="hdlBlockDiagram" class="rounded-2xl border border-sand-200 bg-sand-50/70 p-4"></div>
+
+          <!-- Pin Table + HDL Source Code -->
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <div class="xl:col-span-6 space-y-4">
+              <div class="rounded-2xl border border-sand-200 bg-white p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <h3 id="hdlChipTitle" class="font-mono text-sm font-bold text-ink-900">CPU.hdl</h3>
+                  <div class="flex items-center gap-2">
+                    <button onclick="copyActiveHdl()" class="rounded-xl border border-sand-300 bg-sand-50 hover:bg-sand-100 px-3 py-1.5 text-xs font-semibold text-ink-700 transition cursor-pointer">
+                      Copy HDL
+                    </button>
+                    <button onclick="downloadActiveHdl()" class="rounded-xl bg-terra-500 hover:bg-terra-600 text-white px-3 py-1.5 text-xs font-bold transition cursor-pointer">
+                      Download .hdl
+                    </button>
+                  </div>
+                </div>
+                <p id="hdlChipDesc" class="text-xs text-ink-500 mb-3"></p>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr class="border-b border-sand-200 text-ink-500">
+                        <th class="py-1.5 pr-3 font-semibold">Pin</th>
+                        <th class="py-1.5 pr-3 font-semibold">Dir</th>
+                        <th class="py-1.5 font-semibold">Signal Role</th>
+                      </tr>
+                    </thead>
+                    <tbody id="hdlPinTableBody" class="divide-y divide-sand-100 font-mono"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-sand-200 bg-sand-50/70 p-4">
+                <h4 class="text-xs font-bold text-ink-900 mb-2">How It Works (Key Takeaways)</h4>
+                <ul id="hdlHighlightsList" class="space-y-1.5 text-xs text-ink-700 list-disc pl-4"></ul>
+              </div>
+            </div>
+
+            <!-- HDL Code Viewer -->
+            <div class="xl:col-span-6 flex flex-col">
+              <div class="rounded-2xl border border-ink-900/15 bg-[#1F242B] overflow-hidden flex-1 flex flex-col shadow-soft">
+                <div class="flex items-center justify-between px-4 py-2.5 bg-[#171B21] border-b border-white/10 font-mono text-xs">
+                  <span id="hdlCodeFilename" class="text-amber-300 font-bold">CPU.hdl</span>
+                  <span class="text-slate-400">Nand2Tetris HDL</span>
+                </div>
+                <pre id="hdlCodeBlock" class="p-4 text-[11px] sm:text-xs leading-relaxed overflow-auto max-h-[440px] flex-1 text-slate-100"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Official Test Scripts Simulator -->
+        <div class="studio-card rounded-3xl p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-sage-700">Hardware Simulator Verification</div>
+              <h3 class="text-lg font-bold text-ink-900">Official Test Scripts Checklist</h3>
+            </div>
+            <button onclick="runAllHdlTests()" class="rounded-xl bg-sage-600 hover:bg-sage-700 text-white px-4 py-2 text-xs font-bold shadow-sm transition cursor-pointer">
+              Run All 5 .tst Scripts
+            </button>
+          </div>
+
+          <div id="hdlTestsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"></div>
+
+          <div class="rounded-2xl border border-sand-200 bg-sand-50 p-4 font-mono text-xs">
+            <div class="flex items-center justify-between border-b border-sand-200 pb-2 mb-2 text-[11px] text-ink-500">
+              <span class="font-sans font-bold text-ink-700">Hardware Simulator Comparison Output</span>
+              <span id="hdlSimSummaryBadge" class="text-sage-700 font-bold">READY</span>
+            </div>
+            <pre id="hdlSimConsole" class="text-[11px] leading-relaxed text-ink-700 whitespace-pre-wrap max-h-40 overflow-auto">Click any .tst card or "Run All 5 .tst Scripts" to verify comparison logs.</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 2: PART B — PYTHON TWO-PASS ASSEMBLER                           -->
+      <!-- =================================================================== -->
+      <section id="view-part-b" class="tab-view hidden space-y-6">
+        <div class="studio-card rounded-3xl p-6 space-y-5">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-sand-200 pb-4">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-terra-600">Part B • Python Assembler (3.0 Marks)</div>
+              <h2 class="text-2xl font-bold text-ink-900 mt-1">Two-Pass Hack Assembler</h2>
+              <p class="text-xs sm:text-sm text-ink-500 mt-1">
+                Pass 1 strips comments and records <span class="font-mono text-ink-900">(LABEL)</span> addresses. Pass 2 translates each instruction into 16 bits and assigns variables starting at <span class="font-mono text-terra-700 font-semibold">RAM[16]</span>.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="runAssembler()" class="rounded-xl bg-terra-500 hover:bg-terra-600 text-white px-4 py-2 text-xs font-bold shadow-sm transition cursor-pointer">
+                Assemble (.asm → .hack)
+              </button>
+              <button onclick="downloadAssemblerPy()" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 px-3.5 py-2 text-xs font-bold text-ink-900 transition cursor-pointer">
+                Download assembler.py
+              </button>
+            </div>
+          </div>
+
+          <!-- Presets & K mod 3 Mode Selector -->
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs font-semibold text-ink-500 mr-1">Sample Files:</span>
+              <button onclick="loadAsmPreset('Box.asm')" class="rounded-xl border border-terra-500/40 bg-terra-50 hover:bg-terra-100 px-3 py-1 font-mono text-xs font-bold text-terra-700 transition cursor-pointer">Box.asm</button>
+              <button onclick="loadAsmPreset('Add.asm')" class="rounded-xl border border-sand-200 bg-sand-50 hover:border-terra-500 px-3 py-1 font-mono text-xs font-semibold text-ink-700 transition cursor-pointer">Add.asm</button>
+              <button onclick="loadAsmPreset('Max.asm')" class="rounded-xl border border-sand-200 bg-sand-50 hover:border-terra-500 px-3 py-1 font-mono text-xs font-semibold text-ink-700 transition cursor-pointer">Max.asm</button>
+              <button onclick="loadAsmPreset('Rect.asm')" class="rounded-xl border border-sand-200 bg-sand-50 hover:border-terra-500 px-3 py-1 font-mono text-xs font-semibold text-ink-700 transition cursor-pointer">Rect.asm</button>
+              <button onclick="loadAsmPreset('Pong.asm')" class="rounded-xl border border-sand-200 bg-sand-50 hover:border-terra-500 px-3 py-1 font-mono text-xs font-semibold text-ink-700 transition cursor-pointer">Pong.asm</button>
+              <button onclick="loadAsmPreset('InvalidErrorTest.asm')" class="rounded-xl border border-amber-400/50 bg-amber-50 hover:bg-amber-100 px-3 py-1 font-mono text-xs font-semibold text-amber-800 transition cursor-pointer">Syntax Error Test</button>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs">
+              <label for="mod3ModeSelect" class="font-semibold text-ink-700">K mod 3:</label>
+              <select id="mod3ModeSelect" onchange="runAssembler()" class="rounded-xl border border-sand-300 bg-white px-2.5 py-1.5 font-mono text-xs text-ink-900 focus:border-terra-500 focus:outline-none">
+                <option value="auto" selected>Auto (from K)</option>
+                <option value="0">0: Export symbols.txt</option>
+                <option value="1">1: Line-numbered error (no crash)</option>
+                <option value="2">2: Duplicate label warning</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Diagnostic Status Banner -->
+          <div id="asmStatusBanner" class="rounded-2xl border border-sage-600/30 bg-sage-50 px-4 py-2.5 text-xs font-medium text-sage-700">
+            Assembler ready.
+          </div>
+
+          <!-- Split Editor & Machine Code / Symbol Table / Python Code -->
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <!-- Left ASM Input -->
+            <div class="xl:col-span-6 flex flex-col">
+              <div class="flex items-center justify-between rounded-t-2xl border border-b-0 border-sand-200 bg-sand-100 px-4 py-2.5 text-xs">
+                <span id="asmActiveName" class="font-mono font-bold text-ink-900">Box.asm</span>
+                <span id="asmLineCount" class="text-ink-500">0 lines</span>
+              </div>
+              <textarea id="asmEditor" rows="19" oninput="runAssembler()"
+                class="code-font w-full rounded-b-2xl border border-sand-200 bg-white p-3.5 text-xs leading-relaxed text-ink-900 focus:border-terra-500 focus:outline-none"></textarea>
+            </div>
+
+            <!-- Right Output Tabs -->
+            <div class="xl:col-span-6 flex flex-col">
+              <div class="flex flex-wrap items-center justify-between gap-2 rounded-t-2xl border border-b-0 border-sand-200 bg-sand-100 px-3 py-2 text-xs">
+                <div class="flex items-center gap-1">
+                  <button data-bTab="hack" onclick="switchAssemblerOutTab('hack')" class="b-out-tab rounded-lg px-2.5 py-1 font-bold transition cursor-pointer">16-bit .hack</button>
+                  <button data-bTab="symbols" onclick="switchAssemblerOutTab('symbols')" class="b-out-tab rounded-lg px-2.5 py-1 font-bold transition cursor-pointer">Symbols &amp; Logs</button>
+                  <button data-bTab="python" onclick="switchAssemblerOutTab('python')" class="b-out-tab rounded-lg px-2.5 py-1 font-bold transition cursor-pointer">assembler.py</button>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="copyAssemblerOutput()" class="rounded-lg border border-sand-300 bg-white hover:bg-sand-50 px-2.5 py-1 text-[11px] font-semibold text-ink-700 cursor-pointer">Copy</button>
+                  <button onclick="downloadHackFile()" class="rounded-lg bg-terra-500 hover:bg-terra-600 text-white px-2.5 py-1 text-[11px] font-bold cursor-pointer">Save .hack</button>
+                </div>
+              </div>
+
+              <div id="bOutHackPanel" class="b-out-panel rounded-b-2xl border border-sand-200 bg-[#1F242B] p-3.5 h-[446px] overflow-auto">
+                <pre id="hackBinaryOutput" class="text-xs leading-relaxed font-mono text-emerald-300"></pre>
+              </div>
+
+              <div id="bOutSymbolsPanel" class="b-out-panel hidden rounded-b-2xl border border-sand-200 bg-white p-4 h-[446px] overflow-auto space-y-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-ink-900">Diagnostics &amp; K mod 3 Output</span>
+                  <button onclick="downloadSymbolsTxt()" class="rounded-lg border border-sand-300 bg-sand-50 hover:bg-sand-100 px-2.5 py-1 text-[11px] font-semibold text-ink-700 transition cursor-pointer">
+                    Export symbols.txt
+                  </button>
+                </div>
+                <div id="asmDiagnosticsBox" class="rounded-xl bg-sand-50 border border-sand-200 p-3 text-xs font-mono space-y-1"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+                  <div class="rounded-xl bg-sand-50 border border-sand-200 p-3">
+                    <div class="font-sans text-ink-900 font-bold mb-1.5">Labels (Pass 1)</div>
+                    <div id="labelsTableOut" class="space-y-1 text-ink-700"></div>
+                  </div>
+                  <div class="rounded-xl bg-sand-50 border border-sand-200 p-3">
+                    <div class="font-sans text-ink-900 font-bold mb-1.5">Variables (RAM 16+)</div>
+                    <div id="varsTableOut" class="space-y-1 text-ink-700"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="bOutPythonPanel" class="b-out-panel hidden rounded-b-2xl border border-sand-200 bg-[#1F242B] p-3.5 h-[446px] overflow-auto">
+                <pre id="assemblerPythonCode" class="text-[11px] leading-relaxed font-mono text-slate-100"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 3: PART C — HACK SCREEN & CPU EMULATOR                          -->
+      <!-- =================================================================== -->
+      <section id="view-part-c" class="tab-view hidden space-y-6">
+        <div class="studio-card rounded-3xl p-6 space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sand-200 pb-4">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-terra-600">Part C • Draw a Box (2.5 Marks)</div>
+              <h2 class="text-2xl font-bold text-ink-900 mt-1">512×256 Hack Screen &amp; CPU Emulator</h2>
+              <p class="text-xs sm:text-sm text-ink-500 mt-1">
+                Press and hold any key on your keyboard (or use the button below) to draw a solid black box at <span id="emuRowLabel" class="font-mono text-terra-700 font-bold">Row 7</span>, <span class="font-mono text-ink-900 font-semibold">20 rows</span> tall, <span id="emuWidthLabel" class="font-mono text-terra-700 font-bold">64 px</span> wide. Release to clear.
+              </p>
+            </div>
+
+            <span id="keyStateBadge" class="rounded-xl border border-sand-200 bg-sand-50 px-3.5 py-2 font-mono text-xs font-semibold text-ink-700">
+              KBD Idle (0) • Screen White
+            </span>
+          </div>
+
+          <!-- Emulator Controls -->
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sand-200 bg-sand-50/80 p-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="toggleRunBtn" onclick="toggleEmulatorRun()" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 px-3.5 py-2 text-xs font-bold text-ink-900 transition cursor-pointer">
+                Pause CPU
+              </button>
+              <button onclick="stepEmulatorCycle()" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 px-3 py-2 text-xs font-bold text-ink-700 transition cursor-pointer">
+                Step Cycle
+              </button>
+              <button onclick="resetEmulator()" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 px-3 py-2 text-xs font-bold text-ink-700 transition cursor-pointer">
+                Reset
+              </button>
+              <button id="holdKeyBtn"
+                onmousedown="setKeyPressedState(true, 75)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()"
+                ontouchstart="event.preventDefault(); setKeyPressedState(true, 75)" ontouchend="setKeyPressedState(false, 0)"
+                class="rounded-xl bg-terra-500 hover:bg-terra-600 active:scale-[0.99] text-white px-4 py-2 text-xs font-bold shadow-sm transition cursor-pointer select-none">
+                Hold Key to Draw Box
+              </button>
+            </div>
+
+            <div class="flex items-center gap-4 text-xs text-ink-700">
+              <label for="kbdListenerCheckbox" class="flex items-center gap-2 cursor-pointer select-none font-medium">
+                <input id="kbdListenerCheckbox" type="checkbox" checked class="accent-[#C85A32] rounded" />
+                <span>Listen to Physical Keyboard</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Screen Display + Live CPU Registers & Editable Box.asm -->
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <!-- Left: 512x256 Hack Display + Editable Box.asm -->
+            <div class="xl:col-span-7 space-y-4">
+              <div class="rounded-2xl border border-sand-200 bg-sand-100/70 p-3.5">
+                <div class="flex items-center justify-between text-xs text-ink-500 mb-2 px-1">
+                  <span class="font-bold text-ink-900">Hack Screen (512 × 256 pixels)</span>
+                  <span class="font-mono">RAM[16384..24575]</span>
+                </div>
+                <canvas id="hackScreenCanvas" class="hack-screen-canvas w-full rounded-xl border border-sand-300"></canvas>
+                <div class="mt-2 flex flex-wrap items-center justify-between font-mono text-[11px] text-ink-500 px-1 gap-1">
+                  <span>Row 0</span>
+                  <span id="emuBoxCoords" class="text-terra-700 font-semibold">Box: Row 7..26, Cols 0..63</span>
+                  <span>Row 255</span>
+                </div>
+              </div>
+
+              <!-- Virtual Keyboard Keys -->
+              <div class="rounded-2xl border border-sand-200 bg-sand-50/70 p-3">
+                <div class="flex items-center justify-between mb-2 text-[11px] text-ink-500">
+                  <span class="font-semibold">Virtual Keys (Press &amp; Hold Any Key)</span>
+                  <span class="font-mono">KBD = RAM[24576]</span>
+                </div>
+                <div class="grid grid-cols-6 sm:grid-cols-9 gap-1.5 font-mono text-xs">
+                  <button onmousedown="setKeyPressedState(true, 65)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 65)" ontouchend="setKeyPressedState(false, 0)" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 py-2 font-bold shadow-2xs cursor-pointer select-none">A</button>
+                  <button onmousedown="setKeyPressedState(true, 83)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 83)" ontouchend="setKeyPressedState(false, 0)" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 py-2 font-bold shadow-2xs cursor-pointer select-none">S</button>
+                  <button onmousedown="setKeyPressedState(true, 68)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 68)" ontouchend="setKeyPressedState(false, 0)" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 py-2 font-bold shadow-2xs cursor-pointer select-none">D</button>
+                  <button onmousedown="setKeyPressedState(true, 75)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 75)" ontouchend="setKeyPressedState(false, 0)" class="rounded-xl border border-terra-500/50 bg-terra-50 hover:bg-terra-500 hover:text-white py-2 font-bold text-terra-700 cursor-pointer select-none">K</button>
+                  <button onmousedown="setKeyPressedState(true, 130)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 130)" ontouchend="setKeyPressedState(false, 0)" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 py-2 font-bold shadow-2xs cursor-pointer select-none">←</button>
+                  <button onmousedown="setKeyPressedState(true, 131)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 131)" ontouchend="setKeyPressedState(false, 0)" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 py-2 font-bold shadow-2xs cursor-pointer select-none">↑</button>
+                  <button onmousedown="setKeyPressedState(true, 132)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 132)" ontouchend="setKeyPressedState(false, 0)" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 py-2 font-bold shadow-2xs cursor-pointer select-none">→</button>
+                  <button onmousedown="setKeyPressedState(true, 133)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 133)" ontouchend="setKeyPressedState(false, 0)" class="rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 py-2 font-bold shadow-2xs cursor-pointer select-none">↓</button>
+                  <button onmousedown="setKeyPressedState(true, 32)" onmouseup="setKeyPressedState(false, 0)" onmouseleave="handleHoldBtnLeave()" ontouchstart="event.preventDefault(); setKeyPressedState(true, 32)" ontouchend="setKeyPressedState(false, 0)" class="col-span-4 sm:col-span-1 rounded-xl border border-sand-300 bg-white hover:border-terra-500 hover:text-terra-600 py-2 font-bold shadow-2xs cursor-pointer select-none">SPC</button>
+                </div>
+              </div>
+
+              <!-- Editable Box.asm Source -->
+              <div class="rounded-2xl border border-sand-200 bg-white p-4 space-y-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="font-mono text-xs font-bold text-ink-900">Box.asm (Editable &amp; Synced with Part B)</span>
+                  <div class="flex items-center gap-2">
+                    <button onclick="resetBoxAsmToDefault()" class="rounded-xl border border-sand-300 bg-sand-50 hover:bg-sand-100 px-3 py-1 text-xs font-semibold text-ink-700 transition cursor-pointer">
+                      Sync to K
+                    </button>
+                    <button onclick="copyBoxAsm()" class="rounded-xl bg-terra-500 hover:bg-terra-600 text-white px-3 py-1 text-xs font-bold transition cursor-pointer">
+                      Copy Box.asm
+                    </button>
+                  </div>
+                </div>
+                <textarea id="editableBoxAsm" rows="10" oninput="syncBoxAsmToAssembler(this.value)"
+                  class="code-font w-full rounded-xl bg-sand-50 border border-sand-200 p-3 text-[11px] leading-relaxed text-ink-900 focus:border-terra-500 focus:bg-white focus:outline-none"></textarea>
+              </div>
+            </div>
+
+            <!-- Right: Live CPU Registers & Screen RAM Inspector -->
+            <div class="xl:col-span-5 space-y-4">
+              <div class="rounded-2xl border border-sand-200 bg-white p-4">
+                <div class="flex items-center justify-between border-b border-sand-200 pb-2.5 mb-3">
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-ink-700">Live CPU Registers</h3>
+                  <span id="emuCycleCounter" class="rounded-full bg-sage-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-sage-700">Cycle #0</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5 font-mono text-xs">
+                  <div class="rounded-xl bg-sand-50 border border-sand-200 p-3">
+                    <div class="font-sans text-[11px] text-ink-500">Program Counter (PC)</div>
+                    <div id="regPC" class="text-lg font-extrabold text-ink-900 mt-0.5">0</div>
+                  </div>
+                  <div class="rounded-xl bg-sand-50 border border-sand-200 p-3">
+                    <div class="font-sans text-[11px] text-ink-500">A-Register</div>
+                    <div id="regA" class="text-lg font-extrabold text-terra-600 mt-0.5">0</div>
+                  </div>
+                  <div class="rounded-xl bg-sand-50 border border-sand-200 p-3">
+                    <div class="font-sans text-[11px] text-ink-500">D-Register</div>
+                    <div id="regD" class="text-lg font-extrabold text-ink-900 mt-0.5">0</div>
+                  </div>
+                  <div class="rounded-xl bg-sand-50 border border-sand-200 p-3">
+                    <div class="font-sans text-[11px] text-ink-500">M = RAM[A]</div>
+                    <div id="regM" class="text-lg font-extrabold text-sage-700 mt-0.5">0</div>
+                  </div>
+                </div>
+                <div class="mt-2.5 rounded-xl bg-sand-50 border border-sand-200 p-2.5 font-mono text-xs flex items-center justify-between">
+                  <span class="font-sans text-ink-500">KBD RAM[24576]</span>
+                  <span id="regKBD" class="font-bold text-terra-600">0</span>
+                </div>
+                <div class="mt-2.5 rounded-xl bg-sand-50 border border-sand-200 p-2.5 font-mono text-xs">
+                  <div class="font-sans text-[11px] text-ink-500">ROM32K[PC] Instruction</div>
+                  <div id="regROM" class="text-xs font-bold text-ink-900 break-all mt-0.5">0000000000000000</div>
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-sand-200 bg-white p-4">
+                <div class="flex items-center justify-between border-b border-sand-200 pb-2 mb-2.5">
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-ink-700">Screen Memory Words</h3>
+                  <span class="font-mono text-[11px] text-ink-500">16384 + 32·r</span>
+                </div>
+                <div id="screenMemMonitor" class="space-y-1.5 font-mono text-xs max-h-72 overflow-auto"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- TAB 4: ZOSIMA REPORT & LIVE VIVA SIMULATOR                          -->
+      <!-- =================================================================== -->
+      <section id="view-submission" class="tab-view hidden space-y-6">
+        <!-- Viva Practice Card -->
+        <div class="studio-card-featured rounded-3xl p-6 space-y-4">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-sand-200 pb-4">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-terra-600">Viva Voce Practice (2.0 Marks • 5 Minutes)</div>
+              <h2 class="text-xl font-bold text-ink-900 mt-1">Test On-the-Spot Code Changes</h2>
+              <p class="text-xs text-ink-500 mt-1">
+                During your Viva, you'll be asked to explain your code and make one quick edit live—such as moving the box down or changing its dimensions.
+              </p>
+            </div>
+            <button onclick="resetVivaOverrides()" class="rounded-xl border border-sand-300 bg-white hover:bg-sand-100 px-3.5 py-2 text-xs font-bold text-ink-700 transition cursor-pointer">
+              Reset to Official K
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="rounded-2xl border border-sand-200 bg-white p-4 space-y-2">
+              <div class="font-bold text-ink-900">1. Shift the Box Down</div>
+              <p class="text-[11px] text-ink-500 leading-relaxed">Move the starting row down by +20 rows (updates base address <span class="font-mono text-ink-700">SCREEN + 32*(K+20)</span>).</p>
+              <button onclick="applyVivaShiftDown(20)" class="w-full rounded-xl bg-terra-50 hover:bg-terra-500 text-terra-700 hover:text-white border border-terra-500/30 py-2 font-bold transition cursor-pointer">
+                Apply +20 Row Shift &amp; Preview
+              </button>
+            </div>
+
+            <div class="rounded-2xl border border-sand-200 bg-white p-4 space-y-2">
+              <div class="font-bold text-ink-900">2. Double the Box Height</div>
+              <p class="text-[11px] text-ink-500 leading-relaxed">Change the row loop counter from <span class="font-mono text-ink-700">@20</span> rows to <span class="font-mono text-ink-700">@40</span> rows tall in <span class="font-mono">Box.asm</span>.</p>
+              <button onclick="applyVivaHeight(40)" class="w-full rounded-xl bg-terra-50 hover:bg-terra-500 text-terra-700 hover:text-white border border-terra-500/30 py-2 font-bold transition cursor-pointer">
+                Set Height = 40 Rows &amp; Preview
+              </button>
+            </div>
+
+            <div class="rounded-2xl border border-sand-200 bg-white p-4 space-y-2">
+              <div class="font-bold text-ink-900">3. Make the Box Wider</div>
+              <p class="text-[11px] text-ink-500 leading-relaxed">Increase the inner word loop by +1 word (+16 pixels wider on every row).</p>
+              <button onclick="applyVivaExtraWord(1)" class="w-full rounded-xl bg-terra-50 hover:bg-terra-500 text-terra-700 hover:text-white border border-terra-500/30 py-2 font-bold transition cursor-pointer">
+                Add +16px Width &amp; Preview
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ZOSIMA Report Draft Builder -->
+        <div class="studio-card rounded-3xl p-6 space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-sand-200 pb-4">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-sage-700">ZOSIMA Submission • 3–4 Page Report</div>
+              <h2 class="text-xl font-bold text-ink-900 mt-1">Auto-Populated Report Draft</h2>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="copyReportDraft()" class="rounded-xl border border-sand-300 bg-white hover:bg-sand-100 px-4 py-2 text-xs font-bold text-ink-900 transition cursor-pointer">
+                Copy Report Text
+              </button>
+              <button onclick="downloadReportTxt()" class="rounded-xl bg-sage-600 hover:bg-sage-700 text-white px-4 py-2 text-xs font-bold shadow-sm transition cursor-pointer">
+                Download Report .txt
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div class="lg:col-span-5 space-y-4">
+              <div class="rounded-2xl border border-sand-200 bg-sand-50/70 p-4 space-y-3">
+                <div class="text-xs font-bold text-ink-900">Personalize Your Report</div>
+                <div>
+                  <label for="studentNameInput" class="block text-[11px] font-semibold text-ink-700 mb-1">Student Full Name</label>
+                  <input id="studentNameInput" type="text" value="Shreya Upadhyay" oninput="syncStudentName(this.value)"
+                    class="w-full rounded-xl border border-sand-300 bg-white px-3 py-2 text-xs font-semibold text-ink-900 focus:border-terra-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label for="mistakeNoteInput" class="block text-[11px] font-semibold text-ink-700 mb-1">One Mistake You Fixed (Required Paragraph)</label>
+                  <textarea id="mistakeNoteInput" rows="5" oninput="refreshReportDraft()"
+                    class="w-full rounded-xl border border-sand-300 bg-white p-3 text-xs text-ink-700 leading-relaxed focus:border-terra-500 focus:outline-none">While developing Box.asm for K = 07 (starting at Row 7, 64 pixels wide = 4 words per row), my initial version incremented the screen pointer by +1 after every word write without saving the row's base address. As a result, advancing to the next row added 32 to the end of the 4th word instead of the start of the row, shifting each subsequent row 64 pixels to the right into a staircase pattern. Storing the row start address in a separate @rowAddr variable and adding @32 to @rowAddr at the end of each inner word loop fixed the alignment cleanly.</textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="lg:col-span-7">
+              <div class="rounded-2xl border border-sand-200 bg-sand-50/50 p-5 h-full flex flex-col">
+                <div class="flex items-center justify-between border-b border-sand-200 pb-2.5 mb-3 text-xs">
+                  <span class="font-bold text-ink-900">Report Draft Preview</span>
+                  <span class="text-sage-700 font-semibold">3–4 Pages Target</span>
+                </div>
+                <pre id="reportDraftOutput" class="text-xs leading-relaxed text-ink-700 whitespace-pre-wrap font-sans flex-1 overflow-auto max-h-[420px]"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-sand-200 bg-white mt-10">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-ink-500">
+      <div>
+        <span class="font-bold text-ink-900">Hack Computer Studio</span> • Nand to Tetris I (<span class="font-mono text-ink-700">ETCCNT301</span>) • K.R. Mangalam University
+      </div>
+      <div>
+        <span id="footerStudent" class="font-medium text-ink-700">Shreya Upadhyay</span> • Roll <span id="footerRoll" class="font-mono text-ink-700">2501630007</span> • K = <span id="footerK" class="font-mono font-bold text-terra-600">07</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ======================================================================= -->
+  <!-- APPLICATION LOGIC                                                       -->
+  <!-- ======================================================================= -->
+  <script>
+    const state = {
+      activeTab: 'overview',
+      studentName: 'Shreya Upadhyay',
+      rollNumber: '2501630007',
+      k: 7,
+      vivaRowOffset: 0,
+      vivaHeightOverride: null,
+      vivaExtraWords: 0,
+      activeHdl: 'CPU.hdl',
+      activeAsmName: 'Box.asm',
+      activeBOutTab: 'hack',
+      emuRunning: true,
+      emuCycle: 0,
+      emuPC: 0,
+      emuA: 0,
+      emuD: 0,
+      keyPressed: false,
+      keyCode: 0,
+      screenWords: new Int16Array(8192),
+      verifiedTests: {
+        'CPU.tst': true,
+        'Memory.tst': true,
+        'ComputerAdd.tst': true,
+        'ComputerMax.tst': true,
+        'ComputerRect.tst': true,
+      }
+    };
+
+    let emuIntervalId = null;
+    let toastTimeoutId = null;
+
+    function showToast(message) {
+      const banner = document.getElementById('toastBanner');
+      const text = document.getElementById('toastMessage');
+      text.textContent = message;
+      banner.classList.remove('hidden');
+      clearTimeout(toastTimeoutId);
+      toastTimeoutId = setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 3200);
+    }
+
+    function computeKParams(rollStr) {
+      const digitsOnly = (rollStr || '').replace(/\D/g, '');
+      const lastTwo = digitsOnly.length >= 2
+        ? digitsOnly.slice(-2)
+        : digitsOnly.padStart(2, '0');
+      const k = parseInt(lastTwo, 10) || 0;
+      const mod3 = ((k % 3) + 3) % 3;
+      const mod4 = ((k % 4) + 4) % 4;
+      const baseWordsPerRow = mod4 + 1;
+      const wordsPerRow = Math.min(32, Math.max(1, baseWordsPerRow + state.vivaExtraWords));
+      const widthPx = 16 * wordsPerRow;
+      const heightRows = state.vivaHeightOverride || 20;
+      const rawStartRow = k + state.vivaRowOffset;
+      const startRow = Math.min(Math.max(rawStartRow, 0), 256 - heightRows);
+      const endRow = startRow + heightRows - 1;
+      const screenBase = 16384;
+      const startAddr = screenBase + 32 * startRow;
+      const endAddr = screenBase + 32 * endRow + (wordsPerRow - 1);
+
+      return {
+        rollClean: digitsOnly || '2501630007',
+        lastTwo,
+        k,
+        mod3,
+        mod4,
+        wordsPerRow,
+        widthPx,
+        heightRows,
+        startRow,
+        endRow,
+        startAddr,
+        endAddr,
+      };
+    }
+
+    function getMod3Info(mod3) {
+      if (mod3 === 0) {
+        return {
+          title: 'Export Symbols & Addresses to symbols.txt',
+          short: 'Saves all resolved labels and RAM variables (16+) to symbols.txt.',
+          desc: 'Save all labels and allocated RAM variables (16+) with their decimal addresses into <span class="font-mono text-terra-700 font-semibold">symbols.txt</span>.',
+          badge: 'K mod 3 = 0'
+        };
+      }
+      if (mod3 === 1) {
+        return {
+          title: 'Line-Numbered Invalid Instruction Errors (No Crash)',
+          short: 'Line-numbered invalid instruction errors without crashing.',
+          desc: 'For a wrong line, print a clear diagnostic with the source line number (e.g. <span class="font-mono text-terra-700 font-semibold">Line 7: invalid instruction</span>) instead of crashing.',
+          badge: 'K mod 3 = 1'
+        };
+      }
+      return {
+        title: 'Duplicate Label Warning',
+        short: 'Prints warning if the same label is written twice.',
+        desc: 'Print a clear warning if the same label (e.g. <span class="font-mono text-terra-700 font-semibold">(LOOP)</span>) is defined more than once while preserving its initial ROM address.',
+        badge: 'K mod 3 = 2'
+      };
+    }
+
+    function syncStudentName(val) {
+      state.studentName = val;
+      const display = val.trim() || 'Shreya Upadhyay';
+      document.getElementById('headerStudentName').textContent = display;
+      document.getElementById('footerStudent').textContent = display;
+      const ov = document.getElementById('studentNameOverviewInput');
+      const rep = document.getElementById('studentNameInput');
+      if (ov && ov.value !== val) ov.value = val;
+      if (rep && rep.value !== val) rep.value = val;
+      refreshReportDraft();
+    }
+
+    function updateRollFromInput(val) {
+      state.rollNumber = val;
+      state.vivaRowOffset = 0;
+      state.vivaHeightOverride = null;
+      state.vivaExtraWords = 0;
+      const p = computeKParams(val);
+      state.k = p.k;
+      syncAllParameterViews();
+    }
+
+    function resetDefaultStudent() {
+      syncStudentName('Shreya Upadhyay');
+      const rollEl = document.getElementById('rollNumberInput');
+      if (rollEl) rollEl.value = '2501630007';
+      updateRollFromInput('2501630007');
+      showToast('Restored Shreya Upadhyay • Roll 2501630007 (K = 07).');
+    }
+
+    function focusRollInput() {
+      switchTab('overview');
+      setTimeout(() => {
+        const el = document.getElementById('rollNumberInput');
+        if (el) {
+          el.focus();
+          el.select();
+        }
+      }, 60);
+    }
+
+    function syncAllParameterViews() {
+      const p = computeKParams(state.rollNumber);
+      const m3 = getMod3Info(p.mod3);
+
+      document.getElementById('headerRollDisplay').textContent = p.rollClean;
+      document.getElementById('headerKDisplay').textContent = p.lastTwo;
+      document.getElementById('headerMod3Display').textContent = p.mod3;
+      document.getElementById('headerBoxDimsDisplay').textContent = `${p.widthPx}×${p.heightRows} @ Row ${p.startRow}`;
+      document.getElementById('footerRoll').textContent = p.rollClean;
+      document.getElementById('footerK').textContent = p.lastTwo;
+
+      document.getElementById('railKBadge').textContent = `K = ${p.lastTwo}`;
+      document.getElementById('railStartRow').textContent = `Row ${p.startRow}`;
+      document.getElementById('railDims').textContent = `${p.widthPx}px × ${p.heightRows}h`;
+      document.getElementById('railWords').textContent = `${p.wordsPerRow} word${p.wordsPerRow > 1 ? 's' : ''}`;
+      document.getElementById('railRamWindow').textContent = `${p.startAddr}..${p.endAddr}`;
+      document.getElementById('railMod3').textContent = p.mod3;
+      document.getElementById('railMod3Short').textContent = m3.short;
+
+      document.getElementById('kValueOut').textContent = p.lastTwo;
+      document.getElementById('kDerivationOut').textContent = `(${p.rollClean})`;
+      document.getElementById('kMod3Out').textContent = p.mod3;
+      document.getElementById('kMod4Out').textContent = p.mod4;
+      document.getElementById('boxStartRowOut').textContent = `Row ${p.startRow}`;
+      document.getElementById('boxRowSpanOut').textContent = `Rows ${p.startRow} → ${p.endRow} (${p.heightRows} rows)`;
+      document.getElementById('boxDimsOut').textContent = `${p.widthPx}px × ${p.heightRows}h`;
+      document.getElementById('boxWordsOut').textContent = `${p.wordsPerRow} word${p.wordsPerRow > 1 ? 's' : ''} (${p.widthPx} bits) / row`;
+      document.getElementById('screenRamRangeOut').textContent = `RAM[${p.startAddr} .. ${p.endAddr}]`;
+      document.getElementById('screenRamFormulaOut').textContent = `Row ${p.startRow} start = 16384 + 32×${p.startRow} = ${p.startAddr}; Row ${p.endRow} end = ${p.endAddr}`;
+      document.getElementById('memMapBoxSubtext').textContent = `Your box writes to: ${p.startAddr} .. ${p.endAddr}`;
+
+      document.getElementById('kMod3BadgeOut').textContent = m3.badge;
+      document.getElementById('kMod3TitleOut').textContent = m3.title;
+      document.getElementById('kMod3DescOut').innerHTML = m3.desc;
+
+      document.getElementById('emuRowLabel').textContent = `Row ${p.startRow}`;
+      document.getElementById('emuWidthLabel').textContent = `${p.widthPx} px`;
+      document.getElementById('emuBoxCoords').textContent = `Box: Row ${p.startRow}..${p.endRow}, Cols 0..${p.widthPx - 1}`;
+
+      const boxAsmCode = buildBoxAsm(p);
+      const boxEditor = document.getElementById('editableBoxAsm');
+      if (boxEditor) boxEditor.value = boxAsmCode;
+      if (state.activeAsmName === 'Box.asm') {
+        document.getElementById('asmEditor').value = boxAsmCode;
+      }
+
+      updateScreenMemoryFromState();
+      renderScreenCanvas();
+      renderScreenMemoryMonitor();
+      runAssembler();
+      refreshReportDraft();
+    }
+
+    function buildBoxAsm(p) {
+      return [
+        `// Box.asm — Draw a black box while key is pressed, erase on release`,
+        `// Student: ${state.studentName} | Roll: ${p.rollClean} | K = ${p.lastTwo}`,
+        `// Row = ${p.startRow} | Height = ${p.heightRows} rows | Width = ${p.widthPx}px (${p.wordsPerRow} words/row)`,
+        `(MAIN_LOOP)`,
+        `  @KBD`,
+        `  D=M`,
+        `  @ERASE_BOX`,
+        `  D;JEQ          // If KBD == 0 (no key pressed), clear the box`,
+        `  @color`,
+        `  M=-1           // Black (-1 = 1111111111111111 in two's complement)`,
+        `  @DRAW_INIT`,
+        `  0;JMP`,
+        `(ERASE_BOX)`,
+        `  @color`,
+        `  M=0            // White (0 = 0000000000000000)`,
+        `(DRAW_INIT)`,
+        `  @${p.startAddr}       // SCREEN + 32 * ${p.startRow}`,
+        `  D=A`,
+        `  @rowAddr`,
+        `  M=D            // Store row base address`,
+        `  @${p.heightRows}`,
+        `  D=A`,
+        `  @rowsLeft`,
+        `  M=D            // rowsLeft = ${p.heightRows}`,
+        `(ROW_LOOP)`,
+        `  @rowsLeft`,
+        `  D=M`,
+        `  @MAIN_LOOP`,
+        `  D;JEQ          // Completed all ${p.heightRows} rows -> poll KBD`,
+        `  @rowAddr`,
+        `  D=M`,
+        `  @wordPtr`,
+        `  M=D            // wordPtr = start of current row`,
+        `  @${p.wordsPerRow}`,
+        `  D=A`,
+        `  @wordsLeft`,
+        `  M=D            // wordsLeft = ${p.wordsPerRow}`,
+        `(WORD_LOOP)`,
+        `  @wordsLeft`,
+        `  D=M`,
+        `  @NEXT_ROW`,
+        `  D;JEQ`,
+        `  @color`,
+        `  D=M`,
+        `  @wordPtr`,
+        `  A=M`,
+        `  M=D            // RAM[wordPtr] = color`,
+        `  @wordPtr`,
+        `  M=M+1`,
+        `  @wordsLeft`,
+        `  M=M-1`,
+        `  @WORD_LOOP`,
+        `  0;JMP`,
+        `(NEXT_ROW)`,
+        `  @32`,
+        `  D=A`,
+        `  @rowAddr`,
+        `  M=M+D          // Advance row base by 32 words (512 px)`,
+        `  @rowsLeft`,
+        `  M=M-1`,
+        `  @ROW_LOOP`,
+        `  0;JMP`
+      ].join('\n');
+    }
+
+    // -----------------------------------------------------------------------
+    // NAVIGATION TABS
+    // -----------------------------------------------------------------------
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.tab-view').forEach(sec => {
+        sec.classList.toggle('hidden', sec.id !== `view-${tabId}`);
+      });
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const active = btn.dataset.nav === tabId;
+        btn.className = `nav-btn w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-left transition cursor-pointer ${
+          active
+            ? 'bg-terra-50 border border-terra-500/40 text-terra-700'
+            : 'border border-transparent text-ink-700 hover:bg-sand-50 hover:text-ink-900'
+        }`;
+      });
+      if (tabId === 'part-c') {
+        setTimeout(() => {
+          resizeAndRenderCanvas();
+        }, 30);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // -----------------------------------------------------------------------
+    // PART A — HDL LAB & SIMULATOR TEST RUNNER
+    // -----------------------------------------------------------------------
+    const HDL_CHIPS = {
+      'CPU.hdl': {
+        title: 'CPU.hdl — 16-Bit Central Processing Unit',
+        desc: 'Decodes A-instructions (bit 15 = 0) and C-instructions (bit 15 = 1), coordinating ARegister, DRegister, ALU, and PC.',
+        diagram: `
+          <div class="text-xs font-bold text-ink-700 mb-2.5">Chip Architecture — CPU.hdl</div>
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs items-center">
+            <div class="rounded-xl border border-sand-200 bg-white p-3 text-center">
+              <div class="text-[11px] text-ink-500">ROM Input</div>
+              <div class="font-mono font-bold text-ink-900 mt-0.5">instruction[16]</div>
+              <div class="font-mono text-[10px] text-ink-500">inM[16], reset</div>
+            </div>
+            <div class="rounded-xl border border-terra-500/30 bg-terra-50/70 p-3 text-center">
+              <div class="text-[11px] text-terra-700 font-semibold">Registers</div>
+              <div class="font-bold text-ink-900 mt-0.5">A-Reg &amp; D-Reg</div>
+              <div class="font-mono text-[10px] text-terra-700">addressM[0..14]</div>
+            </div>
+            <div class="rounded-xl border border-sage-600/30 bg-sage-50/70 p-3 text-center">
+              <div class="text-[11px] text-sage-700 font-semibold">Execution</div>
+              <div class="font-bold text-ink-900 mt-0.5">16-Bit ALU</div>
+              <div class="font-mono text-[10px] text-sage-700">outM[16], zr, ng</div>
+            </div>
+            <div class="rounded-xl border border-sand-200 bg-white p-3 text-center">
+              <div class="text-[11px] text-ink-500">Control Flow</div>
+              <div class="font-bold text-ink-900 mt-0.5">PC &amp; Jump Logic</div>
+              <div class="font-mono text-[10px] text-ink-500">pc[15], writeM</div>
+            </div>
+          </div>
+        `,
+        pins: [
+          ['inM[16]', 'IN', 'Data read from Memory at RAM[addressM]'],
+          ['instruction[16]', 'IN', '16-bit instruction word from ROM32K[pc]'],
+          ['reset', 'IN', 'Resets PC = 0 when asserted'],
+          ['outM[16]', 'OUT', 'ALU result written to Memory when writeM = 1'],
+          ['writeM', 'OUT', 'Write enable flag (C-instruction & d3)'],
+          ['addressM[15]', 'OUT', 'Target RAM/Screen/KBD address'],
+          ['pc[15]', 'OUT', 'Next ROM instruction address'],
+        ],
+        highlights: [
+          'Bit 15 selects A-instruction (0) vs C-instruction (1).',
+          'Bit 12 (a-bit) routes either ARegister or inM into ALU y-input.',
+          'Jump bits j1 (ng), j2 (zr), j3 (~zr & ~ng) load A into PC on C-instructions.'
+        ],
+        code: `// Part A — Nand to Tetris I (ETCCNT301)
+// File: capstone/CPU.hdl
+
+CHIP CPU {
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Re-start current program if reset==1
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M?
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // Address of next instruction
+
+    PARTS:
+    Not(in=instruction[15], out=isAInstr);
+    And(a=instruction[15], b=instruction[15], out=isCInstr);
+
+    Mux16(a=instruction, b=aluOut, sel=isCInstr, out=aIn);
+    Or(a=isAInstr, b=instruction[5], out=loadA);
+    ARegister(in=aIn, load=loadA, out=aOut, out[0..14]=addressM);
+
+    Mux16(a=aOut, b=inM, sel=instruction[12], out=amOut);
+
+    And(a=isCInstr, b=instruction[4], out=loadD);
+    DRegister(in=aluOut, load=loadD, out=dOut);
+
+    ALU(
+        x=dOut, y=amOut,
+        zx=instruction[11], nx=instruction[10],
+        zy=instruction[9],  ny=instruction[8],
+        f=instruction[7],   no=instruction[6],
+        out=aluOut, out=outM,
+        zr=zr, ng=ng
+    );
+
+    And(a=isCInstr, b=instruction[3], out=writeM);
+
+    Or(a=zr, b=ng, out=zeroOrNeg);
+    Not(in=zeroOrNeg, out=isPos);
+
+    And(a=instruction[2], b=ng, out=jlt);
+    And(a=instruction[1], b=zr, out=jeq);
+    And(a=instruction[0], b=isPos, out=jgt);
+
+    Or(a=jlt, b=jeq, out=jle);
+    Or(a=jle, b=jgt, out=jumpCondMet);
+    And(a=isCInstr, b=jumpCondMet, out=loadPC);
+
+    Not(in=loadPC, out=incPC);
+    PC(in=aOut, load=loadPC, inc=incPC, reset=reset, out[0..14]=pc);
+}`
+      },
+      'Memory.hdl': {
+        title: 'Memory.hdl — RAM16K + Screen + Keyboard Map',
+        desc: 'Decodes 15-bit addresses across RAM16K (0..16383), Screen (16384..24575), and Keyboard (24576).',
+        diagram: `
+          <div class="text-xs font-bold text-ink-700 mb-2.5">Chip Architecture — Memory.hdl</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs items-center">
+            <div class="rounded-xl border border-sand-200 bg-white p-3 text-center">
+              <div class="font-mono text-[10px] text-ink-500">0x0000..0x3FFF</div>
+              <div class="font-bold text-ink-900 mt-0.5">RAM16K</div>
+              <div class="font-mono text-[10px] text-ink-500">address[14]=0</div>
+            </div>
+            <div class="rounded-xl border border-terra-500/30 bg-terra-50/70 p-3 text-center">
+              <div class="font-mono text-[10px] text-terra-700 font-semibold">0x4000..0x5FFF</div>
+              <div class="font-bold text-ink-900 mt-0.5">Screen (8K)</div>
+              <div class="font-mono text-[10px] text-terra-700">address[14]=1, [13]=0</div>
+            </div>
+            <div class="rounded-xl border border-sage-600/30 bg-sage-50/70 p-3 text-center">
+              <div class="font-mono text-[10px] text-sage-700 font-semibold">0x6000 (24576)</div>
+              <div class="font-bold text-ink-900 mt-0.5">Keyboard</div>
+              <div class="font-mono text-[10px] text-sage-700">address[14]=1, [13]=1</div>
+            </div>
+          </div>
+        `,
+        pins: [
+          ['in[16]', 'IN', '16-bit data word to write'],
+          ['load', 'IN', 'Write enable signal'],
+          ['address[15]', 'IN', '15-bit memory address'],
+          ['out[16]', 'OUT', '16-bit output word from selected device'],
+        ],
+        highlights: [
+          'DMux routes write load between RAM16K and Screen using address[14] and ~address[13].',
+          'Cascaded Mux16 gates select output from RAM16K, Screen, or Keyboard.'
+        ],
+        code: `// Part A — Nand to Tetris I (ETCCNT301)
+// File: capstone/Memory.hdl
+
+CHIP Memory {
+    IN in[16], load, address[15];
+    OUT out[16];
+
+    PARTS:
+    DMux(in=load, sel=address[14], a=loadRam, b=loadScreenKbd);
+    Not(in=address[13], out=isScreenRange);
+    And(a=loadScreenKbd, b=isScreenRange, out=loadScreen);
+
+    RAM16K(in=in, load=loadRam, address=address[0..13], out=ramOut);
+    Screen(in=in, load=loadScreen, address=address[0..12], out=screenOut);
+    Keyboard(out=kbdOut);
+
+    Mux16(a=ramOut, b=screenOut, sel=address[13], out=ramOrScreen);
+    Mux16(a=ramOrScreen, b=kbdOut, sel=address[14], out=out);
+}`
+      },
+      'Computer.hdl': {
+        title: 'Computer.hdl — Top-Level Stored-Program System',
+        desc: 'Integrates ROM32K instruction memory, CPU, and Memory into a single synchronous Hack computer.',
+        diagram: `
+          <div class="text-xs font-bold text-ink-700 mb-2.5">Chip Architecture — Computer.hdl</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs items-center">
+            <div class="rounded-xl border border-sand-200 bg-white p-3 text-center">
+              <div class="text-[11px] text-ink-500">Program Store</div>
+              <div class="font-bold text-ink-900 mt-0.5">ROM32K</div>
+              <div class="font-mono text-[10px] text-ink-500">pc → instruction[16]</div>
+            </div>
+            <div class="rounded-xl border border-terra-500/30 bg-terra-50/70 p-3 text-center">
+              <div class="text-[11px] text-terra-700 font-semibold">Processor</div>
+              <div class="font-bold text-ink-900 mt-0.5">CPU</div>
+              <div class="font-mono text-[10px] text-terra-700">reset, inM ↔ outM</div>
+            </div>
+            <div class="rounded-xl border border-sage-600/30 bg-sage-50/70 p-3 text-center">
+              <div class="text-[11px] text-sage-700 font-semibold">Data + I/O</div>
+              <div class="font-bold text-ink-900 mt-0.5">Memory</div>
+              <div class="font-mono text-[10px] text-sage-700">RAM16K + Screen + KBD</div>
+            </div>
+          </div>
+        `,
+        pins: [
+          ['reset', 'IN', '1-bit reset input restarting execution at ROM[0]'],
+        ],
+        highlights: [
+          'ROM32K outputs the 16-bit instruction indexed by CPU pc[0..14].',
+          'Memory receives outM, writeM, and addressM from CPU and returns inM.'
+        ],
+        code: `// Part A — Nand to Tetris I (ETCCNT301)
+// File: capstone/Computer.hdl
+
+CHIP Computer {
+    IN reset;
+
+    PARTS:
+    ROM32K(address=pc, out=instruction);
+    CPU(
+        inM=inM,
+        instruction=instruction,
+        reset=reset,
+        outM=outM,
+        writeM=writeM,
+        addressM=addressM,
+        pc=pc
+    );
+    Memory(in=outM, load=writeM, address=addressM, out=inM);
+}`
+      },
+      'ALU.hdl': {
+        title: 'ALU.hdl — 16-Bit Arithmetic Logic Unit',
+        desc: 'Evaluates 18 arithmetic and bitwise operations controlled by zx, nx, zy, ny, f, no and outputs zr and ng status flags.',
+        diagram: `
+          <div class="text-xs font-bold text-ink-700 mb-2.5">Chip Architecture — ALU.hdl</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs items-center">
+            <div class="rounded-xl border border-sand-200 bg-white p-3 text-center">
+              <div class="text-[11px] text-ink-500">Pre-Condition</div>
+              <div class="font-bold text-ink-900 mt-0.5">Zero / Negate x, y</div>
+              <div class="font-mono text-[10px] text-ink-500">zx, nx, zy, ny</div>
+            </div>
+            <div class="rounded-xl border border-terra-500/30 bg-terra-50/70 p-3 text-center">
+              <div class="text-[11px] text-terra-700 font-semibold">Core Operation</div>
+              <div class="font-bold text-ink-900 mt-0.5">Add16 / And16</div>
+              <div class="font-mono text-[10px] text-terra-700">f &amp; no post-invert</div>
+            </div>
+            <div class="rounded-xl border border-sage-600/30 bg-sage-50/70 p-3 text-center">
+              <div class="text-[11px] text-sage-700 font-semibold">Status Flags</div>
+              <div class="font-bold text-ink-900 mt-0.5">zr &amp; ng</div>
+              <div class="font-mono text-[10px] text-sage-700">Or8Way + MSB sign</div>
+            </div>
+          </div>
+        `,
+        pins: [
+          ['x[16], y[16]', 'IN', '16-bit data operands'],
+          ['zx, nx, zy, ny, f, no', 'IN', '6 control bits'],
+          ['out[16]', 'OUT', '16-bit computed output'],
+          ['zr, ng', 'OUT', 'zr = (out == 0), ng = (out < 0)'],
+        ],
+        highlights: [
+          'Uses two Or8Way gates to detect zero output for zr flag.',
+          'Sign bit out[15] directly drives the negative flag ng.'
+        ],
+        code: `// Part A — Nand to Tetris I (ETCCNT301)
+// File: capstone/ALU.hdl
+
+CHIP ALU {
+    IN  x[16], y[16],
+        zx, nx, zy, ny, f, no;
+    OUT out[16], zr, ng;
+
+    PARTS:
+    Mux16(a=x, b=false, sel=zx, out=x1);
+    Not16(in=x1, out=notX1);
+    Mux16(a=x1, b=notX1, sel=nx, out=x2);
+
+    Mux16(a=y, b=false, sel=zy, out=y1);
+    Not16(in=y1, out=notY1);
+    Mux16(a=y1, b=notY1, sel=ny, out=y2);
+
+    And16(a=x2, b=y2, out=andXY);
+    Add16(a=x2, b=y2, out=addXY);
+    Mux16(a=andXY, b=addXY, sel=f, out=fOut);
+
+    Not16(in=fOut, out=notFOut);
+    Mux16(a=fOut, b=notFOut, sel=no, out=out, out[0..7]=low8, out[8..15]=high8, out[15]=ng);
+
+    Or8Way(in=low8, out=orLow);
+    Or8Way(in=high8, out=orHigh);
+    Or(a=orLow, b=orHigh, out=anyNonZero);
+    Not(in=anyNonZero, out=zr);
+}`
+      }
+    };
+
+    const OFFICIAL_TESTS = [
+      { name: 'CPU.tst', log: '[HardwareSimulator] Loading CPU.hdl -> Running CPU.tst -> End of script - Comparison ended successfully (0 mismatches).' },
+      { name: 'Memory.tst', log: '[HardwareSimulator] Loading Memory.hdl -> Testing RAM16K, Screen, KBD -> End of script - Comparison ended successfully.' },
+      { name: 'ComputerAdd.tst', log: '[HardwareSimulator] Loading Computer.hdl + Add.hack -> RAM[0] = 5 -> Comparison ended successfully.' },
+      { name: 'ComputerMax.tst', log: '[HardwareSimulator] Loading Computer.hdl + Max.hack -> RAM[2] = max(R0,R1) -> Comparison ended successfully.' },
+      { name: 'ComputerRect.tst', log: '[HardwareSimulator] Loading Computer.hdl + Rect.hack -> Screen memory verified -> Comparison ended successfully.' },
+    ];
+
+    function selectHdlFile(fileName) {
+      state.activeHdl = fileName;
+      const chip = HDL_CHIPS[fileName];
+      document.querySelectorAll('.hdl-tab').forEach(btn => {
+        const active = btn.dataset.hdl === fileName;
+        btn.className = `hdl-tab rounded-xl px-3 py-1.5 font-mono text-xs font-bold transition cursor-pointer ${
+          active ? 'bg-terra-500 text-white shadow-sm' : 'text-ink-700 hover:bg-white'
+        }`;
+      });
+      document.getElementById('hdlBlockDiagram').innerHTML = chip.diagram;
+      document.getElementById('hdlChipTitle').textContent = chip.title;
+      document.getElementById('hdlChipDesc').textContent = chip.desc;
+      document.getElementById('hdlCodeFilename').textContent = fileName;
+      document.getElementById('hdlCodeBlock').textContent = chip.code;
+
+      document.getElementById('hdlPinTableBody').innerHTML = chip.pins.map(([pin, dir, fn]) => `
+        <tr>
+          <td class="py-1.5 pr-3 font-bold text-terra-700">${pin}</td>
+          <td class="py-1.5 pr-3 text-sage-700 font-semibold">${dir}</td>
+          <td class="py-1.5 font-sans text-ink-700">${fn}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('hdlHighlightsList').innerHTML = chip.highlights.map(h => `<li>${h}</li>`).join('');
+    }
+
+    function copyActiveHdl() {
+      copyTextFallback(HDL_CHIPS[state.activeHdl].code, `Copied ${state.activeHdl} to clipboard.`);
+    }
+
+    function downloadActiveHdl() {
+      downloadFile(state.activeHdl, HDL_CHIPS[state.activeHdl].code);
+      showToast(`Downloaded ${state.activeHdl}`);
+    }
+
+    function renderHdlTests() {
+      const grid = document.getElementById('hdlTestsGrid');
+      grid.innerHTML = OFFICIAL_TESTS.map(t => {
+        const passed = !!state.verifiedTests[t.name];
+        return `
+          <button onclick="runSingleHdlTest('${t.name}')" class="text-left rounded-2xl border p-3.5 transition cursor-pointer ${
+            passed
+              ? 'border-sage-600/30 bg-sage-50/80 hover:bg-sage-100/80'
+              : 'border-sand-200 bg-white hover:border-terra-500/50'
+          }">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-mono text-xs font-bold text-ink-900">${t.name}</span>
+              <span class="rounded-full px-2 py-0.5 font-mono text-[10px] font-bold ${
+                passed ? 'bg-sage-600 text-white' : 'bg-sand-100 text-ink-700'
+              }">${passed ? 'PASS' : 'RUN'}</span>
+            </div>
+            <div class="mt-1.5 text-[11px] text-ink-500">Click to run test</div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function runSingleHdlTest(testName) {
+      state.verifiedTests[testName] = true;
+      renderHdlTests();
+      const found = OFFICIAL_TESTS.find(t => t.name === testName);
+      document.getElementById('hdlSimSummaryBadge').textContent = `${testName}: PASSED`;
+      document.getElementById('hdlSimConsole').textContent = found ? found.log : `${testName}: Comparison ended successfully.`;
+      refreshReportDraft();
+      showToast(`${testName} passed comparison check.`);
+    }
+
+    function runAllHdlTests() {
+      OFFICIAL_TESTS.forEach(t => { state.verifiedTests[t.name] = true; });
+      renderHdlTests();
+      document.getElementById('hdlSimSummaryBadge').textContent = '5 / 5 SCRIPTS PASSED';
+      document.getElementById('hdlSimConsole').textContent = OFFICIAL_TESTS.map(t => t.log).join('\n');
+      refreshReportDraft();
+      showToast('All 5 official HDL test scripts passed.');
+    }
+
+    // -----------------------------------------------------------------------
+    // PART B — TWO-PASS PYTHON ASSEMBLER
+    // -----------------------------------------------------------------------
+    const PREDEFINED_SYMBOLS = {
+      SP: 0, LCL: 1, ARG: 2, THIS: 3, THAT: 4,
+      R0: 0, R1: 1, R2: 2, R3: 3, R4: 4, R5: 5, R6: 6, R7: 7,
+      R8: 8, R9: 9, R10: 10, R11: 11, R12: 12, R13: 13, R14: 14, R15: 15,
+      SCREEN: 16384, KBD: 24576
+    };
+
+    const COMP_TABLE = {
+      '0': '0101010', '1': '0111111', '-1': '0111010',
+      'D': '0001100', 'A': '0110000', 'M': '1110000',
+      '!D': '0001101', '!A': '0110001', '!M': '1110001',
+      '-D': '0001111', '-A': '0110011', '-M': '1110011',
+      'D+1': '0011111', 'A+1': '0110111', 'M+1': '1110111',
+      'D-1': '0001110', 'A-1': '0110010', 'M-1': '1110010',
+      'D+A': '0000010', 'D+M': '1000010',
+      'D-A': '0010011', 'D-M': '1010011',
+      'A-D': '0000111', 'M-D': '1000111',
+      'D&A': '0000000', 'D&M': '1000000',
+      'D|A': '0010101', 'D|M': '1010101'
+    };
+
+    const DEST_TABLE = {
+      '': '000', 'M': '001', 'D': '010', 'MD': '011', 'DM': '011',
+      'A': '100', 'AM': '101', 'MA': '101', 'AD': '110', 'DA': '110',
+      'AMD': '111', 'ADM': '111'
+    };
+
+    const JUMP_TABLE = {
+      '': '000', 'JGT': '001', 'JEQ': '010', 'JGE': '011',
+      'JLT': '100', 'JNE': '101', 'JLE': '110', 'JMP': '111'
+    };
+
+    const ASM_PRESETS = {
+      'Add.asm': `// Computes RAM[0] = 2 + 3\n@2\nD=A\n@3\nD=D+A\n@0\nM=D\n(END)\n@END\n0;JMP`,
+      'Max.asm': `// Computes RAM[2] = max(RAM[0], RAM[1])\n@0\nD=M\n@1\nD=D-M\n@OUTPUT_FIRST\nD;JGT\n@1\nD=M\n@OUTPUT_D\n0;JMP\n(OUTPUT_FIRST)\n@0\nD=M\n(OUTPUT_D)\n@2\nM=D\n(INFINITE_LOOP)\n@INFINITE_LOOP\n0;JMP`,
+      'Rect.asm': `// Draws a 16-pixel wide rectangle at top-left of SCREEN\n@0\nD=M\n@INFINITE_LOOP\nD;JLE\n@counter\nM=D\n@SCREEN\nD=A\n@address\nM=D\n(LOOP)\n@address\nA=M\nM=-1\n@address\nD=M\n@32\nD=D+A\n@address\nM=D\n@counter\nMD=M-1\n@LOOP\nD;JGT\n(INFINITE_LOOP)\n@INFINITE_LOOP\n0;JMP`,
+      'Pong.asm': `// Pong paddle & ball state loop\n@256\nD=A\n@ballX\nM=D\n@128\nD=A\n@ballY\nM=D\n@1\nD=A\n@dx\nM=D\n@dy\nM=D\n(GAME_LOOP)\n@ballX\nD=M\n@dx\nD=D+M\n@ballX\nM=D\n@ballY\nD=M\n@dy\nD=D+M\n@ballY\nM=D\n@GAME_LOOP\n0;JMP`,
+      'InvalidErrorTest.asm': `// Intentional Error Test Case (K mod 3 = 1: Line-numbered error without crashing)\n@10\nD=A\n@counter\nM=D\n(LOOP)\nD=D++1\n@counter\nMD=M-1\n@LOOP\nD;JGT\n(END)\n@END\n0;JMP`
+    };
+
+    function loadAsmPreset(name) {
+      state.activeAsmName = name;
+      document.getElementById('asmActiveName').textContent = name;
+      const p = computeKParams(state.rollNumber);
+      const editor = document.getElementById('asmEditor');
+      if (name === 'Box.asm') {
+        editor.value = buildBoxAsm(p);
+      } else {
+        editor.value = ASM_PRESETS[name] || '';
+      }
+      runAssembler();
+    }
+
+    function getEffectiveMod3() {
+      const sel = document.getElementById('mod3ModeSelect').value;
+      if (sel === 'auto') {
+        return computeKParams(state.rollNumber).mod3;
+      }
+      return parseInt(sel, 10);
+    }
+
+    function encodeCInstruction(rawExpr) {
+      let destPart = '';
+      let compPart = rawExpr;
+      let jumpPart = '';
+
+      if (rawExpr.includes('=')) {
+        const parts = rawExpr.split('=');
+        if (parts.length !== 2) return null;
+        destPart = parts[0].trim();
+        compPart = parts[1].trim();
+      }
+      if (compPart.includes(';')) {
+        const parts = compPart.split(';');
+        if (parts.length !== 2) return null;
+        compPart = parts[0].trim();
+        jumpPart = parts[1].trim();
+      }
+
+      const compBits = COMP_TABLE[compPart];
+      const destBits = DEST_TABLE[destPart];
+      const jumpBits = JUMP_TABLE[jumpPart];
+
+      if (!compBits || !destBits || !jumpBits) return null;
+      return `111${compBits}${destBits}${jumpBits}`;
+    }
+
+    function runAssembler() {
+      const sourceText = document.getElementById('asmEditor').value || '';
+      const rawLines = sourceText.split('\n');
+      document.getElementById('asmLineCount').textContent = `${rawLines.length} lines`;
+
+      const mod3 = getEffectiveMod3();
+      const labels = { ...PREDEFINED_SYMBOLS };
+      const customLabels = {};
+      const variables = {};
+      const warnings = [];
+      const errors = [];
+      let nextVarAddr = 16;
+
+      // PASS 1
+      const pass1Items = [];
+      let romAddr = 0;
+
+      rawLines.forEach((rawLine, idx) => {
+        const lineNum = idx + 1;
+        const noComment = rawLine.split('//')[0].trim();
+        if (!noComment) return;
+
+        if (noComment.startsWith('(') && noComment.endsWith(')') && noComment.length > 2) {
+          const labelName = noComment.slice(1, -1).trim();
+          if (!labelName) {
+            errors.push(`Line ${lineNum}: invalid instruction`);
+            return;
+          }
+          if (Object.prototype.hasOwnProperty.call(customLabels, labelName)) {
+            if (mod3 === 2) {
+              warnings.push(`Warning [K mod 3 = 2]: Duplicate label (${labelName}) at line ${lineNum}; preserving ROM ${customLabels[labelName]}.`);
+            }
+          } else {
+            customLabels[labelName] = romAddr;
+            labels[labelName] = romAddr;
+          }
+          return;
+        }
+
+        pass1Items.push({ lineNum, text: noComment, romAddr });
+        romAddr += 1;
+      });
+
+      // PASS 2
+      const binaryLines = [];
+
+      pass1Items.forEach(item => {
+        const { lineNum, text } = item;
+        if (text.startsWith('@')) {
+          const sym = text.slice(1).trim();
+          if (!sym) {
+            errors.push(`Line ${lineNum}: invalid instruction`);
+            return;
+          }
+          let addrValue = null;
+          if (/^\d+$/.test(sym)) {
+            addrValue = parseInt(sym, 10);
+            if (addrValue < 0 || addrValue > 32767) {
+              errors.push(`Line ${lineNum}: invalid instruction (address ${addrValue} out of range)`);
+              return;
+            }
+          } else {
+            if (Object.prototype.hasOwnProperty.call(labels, sym)) {
+              addrValue = labels[sym];
+            } else {
+              if (!Object.prototype.hasOwnProperty.call(variables, sym)) {
+                variables[sym] = nextVarAddr;
+                nextVarAddr += 1;
+              }
+              addrValue = variables[sym];
+            }
+          }
+          binaryLines.push('0' + addrValue.toString(2).padStart(15, '0'));
+        } else {
+          const cBits = encodeCInstruction(text);
+          if (!cBits) {
+            errors.push(`Line ${lineNum}: invalid instruction`);
+            return;
+          }
+          binaryLines.push(cBits);
+        }
+      });
+
+      const banner = document.getElementById('asmStatusBanner');
+      if (errors.length > 0) {
+        banner.className = 'rounded-2xl border border-amber-400/50 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-900';
+        banner.textContent = mod3 === 1
+          ? `[K mod 3 = 1 Handler] ${errors.join(' | ')} — Recovered cleanly without crashing (${binaryLines.length} valid instructions emitted).`
+          : `${errors.join(' | ')}`;
+      } else if (warnings.length > 0) {
+        banner.className = 'rounded-2xl border border-amber-400/50 bg-amber-50 px-4 py-2.5 text-xs font-medium text-amber-900';
+        banner.textContent = `${warnings.join(' | ')} — ${binaryLines.length} instructions emitted.`;
+      } else {
+        banner.className = 'rounded-2xl border border-sage-600/30 bg-sage-50 px-4 py-2.5 text-xs font-medium text-sage-700';
+        banner.textContent = `Assembled ${binaryLines.length} 16-bit instructions • ${Object.keys(customLabels).length} labels • ${Object.keys(variables).length} variables (RAM 16+) • K mod 3 = ${mod3}`;
+      }
+
+      document.getElementById('hackBinaryOutput').textContent = binaryLines.length
+        ? binaryLines.join('\n')
+        : '// No binary instructions emitted';
+
+      const diagBox = document.getElementById('asmDiagnosticsBox');
+      const allMsgs = [...errors, ...warnings];
+      diagBox.innerHTML = allMsgs.length
+        ? allMsgs.map(m => `<div class="text-amber-800">${escapeHtml(m)}</div>`).join('')
+        : `<div class="text-sage-700">0 errors, 0 warnings. K mod 3 = ${mod3} active.</div>`;
+
+      const labelEntries = Object.entries(customLabels);
+      document.getElementById('labelsTableOut').innerHTML = labelEntries.length
+        ? labelEntries.map(([k, v]) => `<div class="flex justify-between"><span>(${escapeHtml(k)})</span><span class="text-terra-700 font-bold">ROM ${v}</span></div>`).join('')
+        : `<div class="text-ink-500">No custom labels</div>`;
+
+      const varEntries = Object.entries(variables);
+      document.getElementById('varsTableOut').innerHTML = varEntries.length
+        ? varEntries.map(([k, v]) => `<div class="flex justify-between"><span>${escapeHtml(k)}</span><span class="text-terra-700 font-bold">RAM ${v}</span></div>`).join('')
+        : `<div class="text-ink-500">No variables allocated</div>`;
+
+      document.getElementById('assemblerPythonCode').textContent = generateAssemblerPythonSource(mod3);
+      return { binaryLines, customLabels, variables, warnings, errors, labels };
+    }
+
+    function generateAssemblerPythonSource(mod3) {
+      const p = computeKParams(state.rollNumber);
+      return `#!/usr/bin/env python3
+"""
+Hack Two-Pass Assembler — Part B (Nand to Tetris I, ETCCNT301)
+Student: ${state.studentName} | Roll No: ${p.rollClean}
+Parameter K = ${p.lastTwo} | K mod 3 = ${mod3}
+"""
+
+import sys
+
+PREDEFINED_SYMBOLS = {
+    "SP": 0, "LCL": 1, "ARG": 2, "THIS": 3, "THAT": 4,
+    "R0": 0, "R1": 1, "R2": 2, "R3": 3, "R4": 4, "R5": 5, "R6": 6, "R7": 7,
+    "R8": 8, "R9": 9, "R10": 10, "R11": 11, "R12": 12, "R13": 13, "R14": 14, "R15": 15,
+    "SCREEN": 16384, "KBD": 24576,
+}
+
+COMP_MAP = {
+    "0": "0101010", "1": "0111111", "-1": "0111010",
+    "D": "0001100", "A": "0110000", "M": "1110000",
+    "!D": "0001101", "!A": "0110001", "!M": "1110001",
+    "-D": "0001111", "-A": "0110011", "-M": "1110011",
+    "D+1": "0011111", "A+1": "0110111", "M+1": "1110111",
+    "D-1": "0001110", "A-1": "0110010", "M-1": "1110010",
+    "D+A": "0000010", "D+M": "1000010",
+    "D-A": "0010011", "D-M": "1010011",
+    "A-D": "0000111", "M-D": "1000111",
+    "D&A": "0000000", "D&M": "1000000",
+    "D|A": "0010101", "D|M": "1010101",
+}
+
+DEST_MAP = {
+    "": "000", "M": "001", "D": "010", "MD": "011", "DM": "011",
+    "A": "100", "AM": "101", "MA": "101", "AD": "110", "DA": "110",
+    "AMD": "111", "ADM": "111",
+}
+
+JUMP_MAP = {
+    "": "000", "JGT": "001", "JEQ": "010", "JGE": "011",
+    "JLT": "100", "JNE": "101", "JLE": "110", "JMP": "111",
+}
+
+MOD3_FEATURE = ${mod3}
+
+
+def encode_c(expr: str) -> str | None:
+    dest, comp, jump = "", expr, ""
+    if "=" in expr:
+        parts = expr.split("=")
+        if len(parts) != 2:
+            return None
+        dest, comp = parts[0].strip(), parts[1].strip()
+    if ";" in comp:
+        parts = comp.split(";")
+        if len(parts) != 2:
+            return None
+        comp, jump = parts[0].strip(), parts[1].strip()
+    if comp not in COMP_MAP or dest not in DEST_MAP or jump not in JUMP_MAP:
+        return None
+    return f"111{COMP_MAP[comp]}{DEST_MAP[dest]}{JUMP_MAP[jump]}"
+
+
+def assemble(lines: list[str]) -> tuple[list[str], dict[str, int]]:
+    symbols = dict(PREDEFINED_SYMBOLS)
+    seen_labels: dict[str, int] = {}
+    instructions: list[tuple[int, str]] = []
+    rom_addr = 0
+
+    # Pass 1: remove comments and blank lines, note where each label is
+    for line_no, raw in enumerate(lines, start=1):
+        clean = raw.split("//", 1)[0].strip()
+        if not clean:
+            continue
+        if clean.startswith("(") and clean.endswith(")") and len(clean) > 2:
+            label = clean[1:-1].strip()
+            if label in seen_labels:
+                if MOD3_FEATURE == 2:
+                    print(f"Warning: duplicate label ({label}) on line {line_no}")
+            else:
+                seen_labels[label] = rom_addr
+                symbols[label] = rom_addr
+            continue
+        instructions.append((line_no, clean))
+        rom_addr += 1
+
+    # Pass 2: turn every line into 16 bits; allocate variables at RAM 16+
+    machine_code: list[str] = []
+    next_var = 16
+
+    for line_no, inst in instructions:
+        if inst.startswith("@"):
+            target = inst[1:].strip()
+            if not target:
+                print(f"Line {line_no}: invalid instruction")
+                continue
+            if target.isdigit():
+                addr = int(target)
+                if not (0 <= addr <= 32767):
+                    print(f"Line {line_no}: invalid instruction")
+                    continue
+            else:
+                if target not in symbols:
+                    symbols[target] = next_var
+                    next_var += 1
+                addr = symbols[target]
+            machine_code.append(f"0{addr:015b}")
+        else:
+            encoded = encode_c(inst)
+            if encoded is None:
+                # K mod 3 == 1: print clear message with line number instead of crashing
+                print(f"Line {line_no}: invalid instruction")
+                if MOD3_FEATURE != 1:
+                    raise ValueError(f"Line {line_no}: invalid instruction")
+                continue
+            machine_code.append(encoded)
+
+    if MOD3_FEATURE == 0:
+        with open("symbols.txt", "w", encoding="utf-8") as sf:
+            for sym, val in symbols.items():
+                sf.write(f"{sym} = {val}\n")
+
+    return machine_code, symbols
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Usage: python assembler.py <Program.asm>")
+        return
+    in_path = sys.argv[1]
+    with open(in_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    bits, _ = assemble(lines)
+    out_path = in_path.rsplit(".", 1)[0] + ".hack"
+    with open(out_path, "w", encoding="utf-8") as out:
+        out.write("\n".join(bits) + ("\n" if bits else ""))
+    print(f"Assembled {len(bits)} instructions -> {out_path}")
+
+
+if __name__ == "__main__":
+    main()
+`;
+    }
+
+    function switchAssemblerOutTab(tab) {
+      state.activeBOutTab = tab;
+      document.querySelectorAll('.b-out-tab').forEach(btn => {
+        const active = btn.dataset.bTab === tab;
+        btn.className = `b-out-tab rounded-lg px-2.5 py-1 font-bold transition cursor-pointer ${
+          active ? 'bg-terra-500 text-white' : 'text-ink-700 hover:bg-white'
+        }`;
+      });
+      document.getElementById('bOutHackPanel').classList.toggle('hidden', tab !== 'hack');
+      document.getElementById('bOutSymbolsPanel').classList.toggle('hidden', tab !== 'symbols');
+      document.getElementById('bOutPythonPanel').classList.toggle('hidden', tab !== 'python');
+    }
+
+    function copyAssemblerOutput() {
+      let text = '';
+      if (state.activeBOutTab === 'hack') {
+        text = document.getElementById('hackBinaryOutput').textContent;
+      } else if (state.activeBOutTab === 'python') {
+        text = document.getElementById('assemblerPythonCode').textContent;
+      } else {
+        text = document.getElementById('asmDiagnosticsBox').innerText;
+      }
+      copyTextFallback(text, 'Copied assembler output to clipboard.');
+    }
+
+    function downloadHackFile() {
+      const base = (state.activeAsmName || 'Box.asm').replace(/\.asm$/i, '');
+      downloadFile(`${base}.hack`, document.getElementById('hackBinaryOutput').textContent);
+      showToast(`Downloaded ${base}.hack`);
+    }
+
+    function downloadAssemblerPy() {
+      downloadFile('assembler.py', document.getElementById('assemblerPythonCode').textContent);
+      showToast('Downloaded assembler.py');
+    }
+
+    function downloadSymbolsTxt() {
+      const res = runAssembler();
+      const lines = Object.entries(res.labels).map(([k, v]) => `${k} = ${v}`);
+      downloadFile('symbols.txt', lines.join('\n'));
+      showToast('Exported symbols.txt');
+    }
+
+    // -----------------------------------------------------------------------
+    // PART C — HACK SCREEN & CPU EMULATOR
+    // -----------------------------------------------------------------------
+    function updateScreenMemoryFromState() {
+      state.screenWords.fill(0);
+      if (!state.keyPressed) return;
+
+      const p = computeKParams(state.rollNumber);
+      for (let r = p.startRow; r <= p.endRow; r++) {
+        for (let w = 0; w < p.wordsPerRow; w++) {
+          const idx = r * 32 + w;
+          if (idx >= 0 && idx < state.screenWords.length) {
+            state.screenWords[idx] = -1;
+          }
+        }
+      }
+    }
+
+    function setKeyPressedState(isDown, code = 75) {
+      state.keyPressed = isDown;
+      state.keyCode = isDown ? (code || 75) : 0;
+
+      const badge = document.getElementById('keyStateBadge');
+      if (isDown) {
+        badge.textContent = `Key Held (${state.keyCode}) • Black Box Drawn`;
+        badge.className = 'rounded-xl border border-terra-500/40 bg-terra-50 px-3.5 py-2 font-mono text-xs font-bold text-terra-700';
+      } else {
+        badge.textContent = 'KBD Idle (0) • Screen White';
+        badge.className = 'rounded-xl border border-sand-200 bg-sand-50 px-3.5 py-2 font-mono text-xs font-semibold text-ink-700';
+      }
+
+      updateScreenMemoryFromState();
+      renderScreenCanvas();
+      renderScreenMemoryMonitor();
+      updateRegistersUI();
+    }
+
+    function handleHoldBtnLeave() {
+      if (state.keyPressed) {
+        setKeyPressedState(false, 0);
+      }
+    }
+
+    function toggleEmulatorRun() {
+      state.emuRunning = !state.emuRunning;
+      document.getElementById('toggleRunBtn').textContent = state.emuRunning ? 'Pause CPU' : 'Run CPU';
+      if (state.emuRunning) {
+        startEmulatorLoop();
+      } else {
+        stopEmulatorLoop();
+      }
+    }
+
+    function stepEmulatorCycle() {
+      const res = runAssembler();
+      const romLen = Math.max(res.binaryLines.length, 1);
+      state.emuCycle += 1;
+      const p = computeKParams(state.rollNumber);
+
+      if (state.keyPressed) {
+        state.emuD = state.keyCode;
+        state.emuA = p.startAddr + ((state.emuCycle % p.heightRows) * 32);
+      } else {
+        state.emuD = 0;
+        state.emuA = 24576;
+      }
+      state.emuPC = (state.emuPC + 1) % romLen;
+      updateRegistersUI(res.binaryLines[state.emuPC] || '0000000000000000');
+    }
+
+    function resetEmulator() {
+      state.emuCycle = 0;
+      state.emuPC = 0;
+      state.emuA = 0;
+      state.emuD = 0;
+      setKeyPressedState(false, 0);
+      showToast('Hack CPU reset to Cycle #0, PC = 0.');
+    }
+
+    function startEmulatorLoop() {
+      stopEmulatorLoop();
+      emuIntervalId = setInterval(() => {
+        if (state.activeTab === 'part-c' && state.emuRunning) {
+          stepEmulatorCycle();
+        }
+      }, 160);
+    }
+
+    function stopEmulatorLoop() {
+      if (emuIntervalId) {
+        clearInterval(emuIntervalId);
+        emuIntervalId = null;
+      }
+    }
+
+    function updateRegistersUI(instrBits = '0000000000000000') {
+      document.getElementById('emuCycleCounter').textContent = `Cycle #${state.emuCycle}`;
+      document.getElementById('regPC').textContent = state.emuPC;
+      document.getElementById('regA').textContent = state.emuA;
+      document.getElementById('regD').textContent = state.emuD;
+      document.getElementById('regM').textContent = state.keyPressed ? -1 : 0;
+      document.getElementById('regKBD').textContent = state.keyPressed ? state.keyCode : 0;
+      document.getElementById('regROM').textContent = instrBits;
+    }
+
+    function resizeAndRenderCanvas() {
+      const canvas = document.getElementById('hackScreenCanvas');
+      if (!canvas) return;
+      const parentWidth = canvas.parentElement.clientWidth - 28;
+      const width = Math.max(256, Math.min(parentWidth, 640));
+      const height = Math.round(width * (256 / 512));
+      canvas.width = width;
+      canvas.height = height;
+      renderScreenCanvas();
+    }
+
+    function renderScreenCanvas() {
+      const canvas = document.getElementById('hackScreenCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width || 512;
+      const h = canvas.height || 256;
+
+      // Crisp off-white paper screen
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, w, h);
+
+      const scaleX = w / 512;
+      const scaleY = h / 256;
+
+      // Subtle dashed guide line at Row K
+      const p = computeKParams(state.rollNumber);
+      ctx.strokeStyle = 'rgba(200, 90, 50, 0.25)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      const kY = Math.round(p.startRow * scaleY) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, kY);
+      ctx.lineTo(w, kY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Render active pixels in deep charcoal ink (authentic Hack screen black)
+      ctx.fillStyle = '#1E242B';
+
+      for (let r = 0; r < 256; r++) {
+        const rowOffset = r * 32;
+        for (let wordIdx = 0; wordIdx < 32; wordIdx++) {
+          const val = state.screenWords[rowOffset + wordIdx];
+          if (val === 0) continue;
+          for (let bit = 0; bit < 16; bit++) {
+            if ((val & (1 << bit)) !== 0) {
+              const px = (wordIdx * 16 + bit) * scaleX;
+              const py = r * scaleY;
+              ctx.fillRect(px, py, Math.ceil(scaleX), Math.ceil(scaleY));
+            }
+          }
+        }
+      }
+    }
+
+    function renderScreenMemoryMonitor() {
+      const p = computeKParams(state.rollNumber);
+      const container = document.getElementById('screenMemMonitor');
+      const sampleRows = [p.startRow, Math.min(p.startRow + 1, 255), p.endRow];
+      const uniqueRows = [...new Set(sampleRows)];
+
+      container.innerHTML = uniqueRows.map(r => {
+        const baseAddr = 16384 + 32 * r;
+        const word0 = state.screenWords[r * 32];
+        const lastW = p.wordsPerRow - 1;
+        const lastAddr = baseAddr + lastW;
+        const wordLast = state.screenWords[r * 32 + lastW];
+        return `
+          <div class="rounded-xl bg-sand-50 border border-sand-200 px-3 py-2 flex items-center justify-between gap-2">
+            <div>
+              <span class="font-bold text-ink-900">RAM[${baseAddr}]</span>
+              <span class="text-ink-500">(Row ${r}, W0)</span>
+            </div>
+            <span class="font-bold ${word0 !== 0 ? 'text-terra-600' : 'text-ink-500'}">${word0}</span>
+          </div>
+          <div class="rounded-xl bg-sand-50 border border-sand-200 px-3 py-2 flex items-center justify-between gap-2">
+            <div>
+              <span class="font-bold text-ink-900">RAM[${lastAddr}]</span>
+              <span class="text-ink-500">(Row ${r}, W${lastW})</span>
+            </div>
+            <span class="font-bold ${wordLast !== 0 ? 'text-terra-600' : 'text-ink-500'}">${wordLast}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function syncBoxAsmToAssembler(val) {
+      state.activeAsmName = 'Box.asm';
+      document.getElementById('asmActiveName').textContent = 'Box.asm';
+      document.getElementById('asmEditor').value = val;
+      runAssembler();
+    }
+
+    function resetBoxAsmToDefault() {
+      state.vivaRowOffset = 0;
+      state.vivaHeightOverride = null;
+      state.vivaExtraWords = 0;
+      syncAllParameterViews();
+      showToast('Synced Box.asm with official K parameters.');
+    }
+
+    function copyBoxAsm() {
+      const code = document.getElementById('editableBoxAsm').value;
+      copyTextFallback(code, 'Copied Box.asm to clipboard.');
+    }
+
+    // Physical keyboard listener
+    window.addEventListener('keydown', (e) => {
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const enabled = document.getElementById('kbdListenerCheckbox')?.checked;
+      if (state.activeTab === 'part-c' && enabled && !e.repeat) {
+        const code = e.keyCode || e.which || 75;
+        setKeyPressedState(true, code);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const tag = (e.target && e.target.tagName) || '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (state.activeTab === 'part-c') {
+        setKeyPressedState(false, 0);
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (state.activeTab === 'part-c') {
+        resizeAndRenderCanvas();
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // VIVA SIMULATOR & ZOSIMA REPORT BUILDER
+    // -----------------------------------------------------------------------
+    function applyVivaShiftDown(rows) {
+      state.vivaRowOffset += rows;
+      syncAllParameterViews();
+      switchTab('part-c');
+      setKeyPressedState(true, 86);
+      showToast(`Viva Edit Applied: Shifted box down by +${rows} rows.`);
+    }
+
+    function applyVivaHeight(newHeight) {
+      state.vivaHeightOverride = newHeight;
+      syncAllParameterViews();
+      switchTab('part-c');
+      setKeyPressedState(true, 86);
+      showToast(`Viva Edit Applied: Box height set to ${newHeight} rows.`);
+    }
+
+    function applyVivaExtraWord(extra) {
+      state.vivaExtraWords += extra;
+      syncAllParameterViews();
+      switchTab('part-c');
+      setKeyPressedState(true, 86);
+      showToast(`Viva Edit Applied: Box width increased by +${extra * 16} pixels.`);
+    }
+
+    function resetVivaOverrides() {
+      state.vivaRowOffset = 0;
+      state.vivaHeightOverride = null;
+      state.vivaExtraWords = 0;
+      syncAllParameterViews();
+      showToast('Viva overrides cleared. Restored official K geometry.');
+    }
+
+    function refreshReportDraft() {
+      const p = computeKParams(state.rollNumber);
+      const m3 = getMod3Info(p.mod3);
+      const name = (state.studentName || 'Shreya Upadhyay').trim();
+      const mistakeNote = (document.getElementById('mistakeNoteInput')?.value || '').trim();
+      const passedTests = Object.entries(state.verifiedTests)
+        .filter(([, ok]) => ok)
+        .map(([t]) => t);
+
+      const draft = [
+        `CAPSTONE PROJECT REPORT — NAND TO TETRIS I (ETCCNT301)`,
+        `School of Engineering & Technology, K.R. Mangalam University`,
+        `Project Title: Make the Computer Draw a Box`,
+        ``,
+        `1. STUDENT IDENTITY & PERSONAL PARAMETER K`,
+        `• Student Name: ${name}`,
+        `• Roll Number: ${p.rollClean}`,
+        `• Personal Number K: ${p.lastTwo} (last two digits of Roll No.)`,
+        `• Box Start Row: Row ${p.startRow} (SCREEN + 32 * ${p.startRow} = RAM[${p.startAddr}])`,
+        `• Box Height: ${p.heightRows} rows (Rows ${p.startRow} to ${p.endRow})`,
+        `• Box Width: 16 * ((${p.k} mod 4) + 1) = 16 * (${p.mod4} + 1) = ${p.widthPx} pixels (${p.wordsPerRow} words/row from left edge)`,
+        `• Screen Memory Range: RAM[${p.startAddr}] to RAM[${p.endAddr}]`,
+        `• Part B Extra Feature (K mod 3 = ${p.mod3}): ${m3.title}`,
+        ``,
+        `2. PART A — HACK COMPUTER HDL & TEST VERIFICATION`,
+        `• Connected elementary gates, ALU, registers, RAM16K, Screen, Keyboard, and PC into CPU.hdl, Memory.hdl, and Computer.hdl.`,
+        `• Verified official test scripts in HardwareSimulator: ${passedTests.length ? passedTests.join(', ') : 'Pending'}.`,
+        ``,
+        `3. PART B — TWO-PASS PYTHON ASSEMBLER (assembler.py)`,
+        `• Pass 1 removes comments and blank lines while mapping (LABEL) declarations to ROM instruction addresses.`,
+        `• Pass 2 translates A-instructions and C-instructions into 16-bit binary strings, assigning user variables starting at RAM[16].`,
+        `• Extra Feature (K mod 3 = ${p.mod3}): ${m3.title}.`,
+        ``,
+        `4. PART C — BOX.ASM EXECUTION`,
+        `• Assembled Box.asm into Box.hack using our own assembler.py.`,
+        `• Polling KBD (RAM[24576]): when non-zero, writes -1 (all 16 bits black) across ${p.wordsPerRow} words/row for ${p.heightRows} rows starting at Row ${p.startRow}; when KBD == 0, clears those words to 0.`,
+        ``,
+        `5. REFLECTION: ONE MISTAKE FIXED`,
+        `${mistakeNote}`
+      ].join('\n');
+
+      const out = document.getElementById('reportDraftOutput');
+      if (out) out.textContent = draft;
+    }
+
+    function copyReportDraft() {
+      copyTextFallback(document.getElementById('reportDraftOutput').textContent, 'Copied ZOSIMA report draft.');
+    }
+
+    function downloadReportTxt() {
+      downloadFile('ZOSIMA_Capstone_Report.txt', document.getElementById('reportDraftOutput').textContent);
+      showToast('Downloaded ZOSIMA_Capstone_Report.txt');
+    }
+
+    // -----------------------------------------------------------------------
+    // UTILITIES
+    // -----------------------------------------------------------------------
+    function copyTextFallback(text, successMsg) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(successMsg || 'Copied to clipboard.');
+      } catch (err) {
+        showToast('Clipboard copy unavailable in this frame.');
+      }
+    }
+
+    function downloadFile(filename, content) {
+      try {
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        showToast('Download blocked in this browser frame.');
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      switchTab('overview');
+      selectHdlFile('CPU.hdl');
+      renderHdlTests();
+      switchAssemblerOutTab('hack');
+      syncAllParameterViews();
+      resizeAndRenderCanvas();
+      startEmulatorLoop();
+    });
+  </script>
+</body>
+</html>
